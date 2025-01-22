@@ -1,6 +1,7 @@
 const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -19,14 +20,14 @@ const initDb = async () => {
 
         // Création de la table des cocktails
         await client.query(`
-      CREATE TABLE IF NOT EXISTS cocktails (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        description TEXT,
-        ingredients TEXT[],
-        instructions TEXT
-      );
-    `);
+        CREATE TABLE IF NOT EXISTS cocktails (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            description TEXT,
+            ingredients TEXT[],
+            instructions TEXT
+        );
+        `);
 
         console.log('Tables créées avec succès.');
         client.release();
@@ -37,18 +38,48 @@ const initDb = async () => {
 
 initDb();
 
-// Endpoints
+// Servir les fichiers statiques du dossier "public"
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Endpoints API
 app.get('/api/cocktails', async (req, res) => {
     try {
-        const result = await pool.query('SELECT * FROM cocktails');
+        const search = req.query.search || '';
+        let query = 'SELECT * FROM cocktails';
+        const values = [];
+
+        if (search) {
+            query += ' WHERE name ILIKE $1 OR $1 = ANY(ingredients)';
+            values.push(`%${search}%`);
+        }
+
+        const result = await pool.query(query, values);
         res.json(result.rows);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
-// Autres endpoints ici (ajout, modification, suppression, etc.)
 
+app.post('/api/cocktails', async (req, res) => {
+    try {
+        console.log('Données reçues :', req.body); // Ajout du log
+        const { name, description, ingredients, instructions } = req.body;
+
+        const result = await pool.query(
+            'INSERT INTO cocktails (name, description, ingredients, instructions) VALUES ($1, $2, $3, $4) RETURNING *',
+            [name, description, ingredients, instructions]
+        );
+
+        res.status(201).json(result.rows[0]);
+    } catch (error) {
+        console.error(error); // Log des erreurs
+        res.status(500).json({ error: error.message });
+    }
+});
+
+
+// Démarrer le serveur
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Serveur démarré sur le port ${PORT}`);
