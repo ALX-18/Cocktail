@@ -8,7 +8,7 @@ Le projet **API Cocktails** vise à créer une plateforme web intuitive et fonct
 - Développer une interface utilisateur intuitive et responsive permettant de visualiser et interagir avec ces recettes.
 - Optimiser l'expérience utilisateur tout en garantissant la sécurité des données.
 
----
+___
 
 ## **1. Fonctionnalités Principales**
 ### **API Backend**
@@ -33,33 +33,32 @@ Le projet **API Cocktails** vise à créer une plateforme web intuitive et fonct
 3. **Expérience utilisateur optimisée**
    - Interface responsive adaptée aux écrans desktop et mobile.
    - Navigation fluide avec un design intuitif.
-
----
+___
 
 ## **2. Architecture Technique**
 ### **Technologies Utilisées**
 - **Backend** :
   - **Node.js** avec Express.js pour la création de l'API.
-  - **Base de données** : MongoDB pour stocker les recettes et les informations utilisateurs.
+  - **Base de données** : PostgreSQL pour stocker les recettes et les informations utilisateurs.
   - **Authentification** : JWT pour sécuriser les sessions utilisateurs.
 - **Frontend** :
   - **React.js** pour développer une interface utilisateur moderne et dynamique.
   - **CSS Framework** : TailwindCSS pour un design rapide et adapté.
 - **Versionning** : Git et GitHub pour le suivi du code.
 - **Tests** : Jest (backend), Postman/Insomnia pour les tests API.
-
+___
 ### **Structure du Projet**
 - **Backend** :
   - `server.js` : point d'entrée de l'application.
   - `routes/` : définit les différents endpoints de l'API.
   - `controllers/` : gère la logique d'affaires.
-  - `models/` : schémas MongoDB (Cocktail, Utilisateur).
+  - `models/` : schémas PostgreSQL (Cocktail, Utilisateur).
 - **Frontend** :
   - `src/components/` : composants React (barre de recherche, liste des recettes, etc.).
   - `src/pages/` : pages principales (Accueil, Détails, Favoris).
   - `src/styles/` : styles CSS personnalisés.
 
----
+___
 
 ## **3. Fonctionnement de l'API**
 ### **Endpoints Principaux**
@@ -93,7 +92,7 @@ GET /api/recipes?ingredients=vodka,orange
 ]
 ```
 
----
+___
 
 ## **4. Interface Utilisateur**
 ### **Pages Principales**
@@ -113,7 +112,7 @@ GET /api/recipes?ingredients=vodka,orange
   - **Recherche** : Champ texte avec filtres.
   - **Cartes de cocktails** : Affichage des recettes sous forme de grilles.
 
----
+___
 
 ## **5. Tests et Validation**
 ### **Tests Backend**
@@ -132,7 +131,7 @@ GET /api/recipes?ingredients=vodka,orange
 - Optimisation des appels API (pagination, cache).
 - Minification des fichiers CSS/JS pour réduire les temps de chargement.
 
----
+___
 
 ## **6. Déploiement**
 1. **Backend** :
@@ -142,7 +141,7 @@ GET /api/recipes?ingredients=vodka,orange
 3. **Base de données** :
    - MongoDB Atlas pour un accès cloud scalable.
 
----
+___
 
 ## **7. Conclusion**
 Le projet **API Cocktails** combine performance et convivialité pour offrir une expérience utilisateur fluide et attrayante. La structure modulaire garantit une évolutivité future, permettant d'ajouter facilement de nouvelles fonctionnalités comme des suggestions personnalisées ou un système de commentaires.

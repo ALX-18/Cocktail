@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cocktail Manager</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+        }
+        header {
+            background-color: #34495e;
+            color: white;
+            text-align: center;
+            padding: 1rem;
+        }
+        main {
+            padding: 1rem;
+        }
+        .cocktail-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        .cocktail {
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 1rem;
+            background-color: white;
+            width: calc(33.333% - 2rem);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .cocktail h3 {
+            margin-top: 0;
+        }
+        .search-bar {
+            margin-bottom: 1rem;
+            display: flex;
+            gap: 0.5rem;
+        }
+        .search-bar input {
+            flex: 1;
+            padding: 0.5rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .search-bar button {
+            padding: 0.5rem 1rem;
+            background-color: #34495e;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .search-bar button:hover {
+            background-color: #2c3e50;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Cocktail Manager</h1>
+    </header>
+    <main>
+        <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="Rechercher un cocktail...">
+            <button id="searchBtn">Rechercher</button>
+        </div>
+        <div class="cocktail-list" id="cocktailList"></div>
+    </main>
+
+    <script>
+        async function fetchCocktails(search = '') {
+            const response = await fetch(`/api/cocktails?search=${search}`);
+            const cocktails = await response.json();
+
+            const cocktailList = document.getElementById('cocktailList');
+            cocktailList.innerHTML = '';
+
+            cocktails.forEach(cocktail => {
+                const cocktailElement = document.createElement('div');
+                cocktailElement.className = 'cocktail';
+                cocktailElement.innerHTML = `
+                    <h3>${cocktail.name}</h3>
+                    <p>${cocktail.description || 'Aucune description disponible.'}</p>
+                    <p><strong>Ingrédients:</strong> ${cocktail.ingredients ? cocktail.ingredients.join(', ') : 'N/A'}</p>
+                `;
+                cocktailList.appendChild(cocktailElement);
+            });
+        }
+
+        document.getElementById('searchBtn').addEventListener('click', () => {
+            const searchInput = document.getElementById('searchInput').value;
+            fetchCocktails(searchInput);
+        });
+
+        // Charger tous les cocktails au démarrage
+        fetchCocktails();
+    </script>
+</body>
+</html>
