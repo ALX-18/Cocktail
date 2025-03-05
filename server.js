@@ -8,40 +8,54 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Configuration PostgreSQL
+// Vérifier si DATABASE_URL est bien défini
+if (!process.env.DATABASE_URL) {
+    console.error("❌ Erreur : DATABASE_URL n'est pas défini dans .env !");
+    process.exit(1);
+}
+
+// 🔹 Configuration de la connexion PostgreSQL
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
+    ssl: process.env.DATABASE_URL.includes("localhost") ? false : { rejectUnauthorized: false }
 });
 
-// Création de la base de données et des tables
+// 🔹 Test de connexion PostgreSQL
+pool.connect()
+    .then(() => console.log("✅ Connecté à PostgreSQL sur Railway"))
+    .catch(err => {
+        console.error("❌ Erreur de connexion PostgreSQL :", err.message);
+        process.exit(1);
+    });
+
+// 🔹 Initialisation de la base de données
 const initDb = async () => {
     try {
         const client = await pool.connect();
 
-        // Création de la table des cocktails
         await client.query(`
-        CREATE TABLE IF NOT EXISTS cocktails (
-            id SERIAL PRIMARY KEY,
-            name VARCHAR(255) NOT NULL,
-            description TEXT,
-            ingredients TEXT[],
-            instructions TEXT
-        );
+            CREATE TABLE IF NOT EXISTS cocktails (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                description TEXT,
+                ingredients TEXT[],
+                instructions TEXT
+            );
         `);
 
-        console.log('Tables créées avec succès.');
+        console.log("✅ Table 'cocktails' vérifiée/créée.");
         client.release();
     } catch (error) {
-        console.error('Erreur lors de l\'initialisation de la base de données :', error.message);
+        console.error("❌ Erreur lors de l'initialisation de la base de données :", error.message);
     }
 };
 
 initDb();
 
-// Servir les fichiers statiques du dossier "public"
+// 🔹 Servir les fichiers statiques du dossier "public"
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Endpoints API
+// 🔹 Endpoint API : Récupérer tous les cocktails
 app.get('/api/cocktails', async (req, res) => {
     try {
         const search = req.query.search || '';
@@ -56,15 +70,20 @@ app.get('/api/cocktails', async (req, res) => {
         const result = await pool.query(query, values);
         res.json(result.rows);
     } catch (error) {
+        console.error("❌ Erreur GET /api/cocktails :", error.message);
         res.status(500).json({ error: error.message });
     }
 });
 
-
+// 🔹 Endpoint API : Ajouter un cocktail
 app.post('/api/cocktails', async (req, res) => {
     try {
-        console.log('Données reçues :', req.body); // Ajout du log
+        console.log("📥 Données reçues :", req.body);
         const { name, description, ingredients, instructions } = req.body;
+
+        if (!name || !ingredients || !instructions) {
+            return res.status(400).json({ error: "Tous les champs sont obligatoires !" });
+        }
 
         const result = await pool.query(
             'INSERT INTO cocktails (name, description, ingredients, instructions) VALUES ($1, $2, $3, $4) RETURNING *',
@@ -73,14 +92,13 @@ app.post('/api/cocktails', async (req, res) => {
 
         res.status(201).json(result.rows[0]);
     } catch (error) {
-        console.error(error); // Log des erreurs
+        console.error("❌ Erreur POST /api/cocktails :", error.message);
         res.status(500).json({ error: error.message });
     }
 });
 
-
-// Démarrer le serveur
+// 🔹 Lancer le serveur
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`Serveur démarré sur le port ${PORT}`);
+    console.log(`🚀 Serveur démarré sur le port ${PORT}`);
 });
