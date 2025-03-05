@@ -1,10 +1,105 @@
-/* Styles personnalisés supplémentaires si nécessaire */
+  /* Styles personnalisés */
 .cocktail-card {
-    transition: transform 0.2s ease-in-out;
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.cocktail-card:hover {
+  transform: translateY(-8px);
+}
+
+.cocktail-card .cocktail-image {
+  transition: transform 0.5s ease;
+}
+
+.cocktail-card:hover .cocktail-image {
+  transform: scale(1.05);
+}
+
+/* Animation pour les boutons */
+@keyframes pulse-light {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.4);
   }
-  
-  .cocktail-card:hover {
-    transform: translateY(-5px);
+  50% {
+    box-shadow: 0 0 0 12px rgba(124, 58, 237, 0);
   }
-  
-  
+}
+
+.pulse-animation {
+  animation: pulse-light 2s infinite;
+}
+
+/* Styles pour le mode sombre */
+.dark {
+  color-scheme: dark;
+}
+
+.dark body {
+  background: linear-gradient(to bottom right, #1f2937, #111827);
+  color: #f3f4f6;
+}
+
+.dark .bg-white {
+  background-color: #1f2937;
+  color: #f3f4f6;
+}
+
+.dark .text-gray-800 {
+  color: #f3f4f6;
+}
+
+.dark .text-gray-700,
+.dark .text-gray-600 {
+  color: #d1d5db;
+}
+
+.dark .border-gray-200 {
+  border-color: #374151;
+}
+
+.dark input,
+.dark textarea {
+  background-color: #374151;
+  border-color: #4b5563;
+  color: #f3f4f6;
+}
+
+.dark .bg-gradient-to-br.from-gray-50.to-gray-100 {
+  background: linear-gradient(to bottom right, #111827, #1f2937);
+}
+
+.dark .bg-white.bg-opacity-60 {
+  background-color: rgba(31, 41, 55, 0.6);
+}
+
+/* Effet de glassmorphism */
+.glass {
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.dark .glass {
+  background: rgba(31, 41, 55, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Amélioration pour les notifications */
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.slide-in {
+  animation: slideIn 0.3s forwards;
+}
+
