@@ -37,9 +37,15 @@
                                       class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-500"></textarea>
                         </div>
                         <div>
-                            <input type="text" id="ingredients" placeholder="Ingrédients (séparés par une virgule)" required 
-                                   class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-500" />
+                            <button type="button" id="toggleIngredientDropdown"
+                                    class="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-md focus:outline-none">
+                                Sélectionner les ingrédients
+                            </button>
+                            <div id="ingredientDropdown" class="hidden border border-gray-300 rounded-md mt-2 p-2 bg-white shadow-md max-h-60 overflow-y-auto">
+                                <!-- Ingrédients seront insérés ici via JS -->
+                            </div>
                         </div>
+                        <input type="hidden" id="ingredients" name="ingredients">
                         <div>
                             <textarea id="instructions" placeholder="Instructions" 
                                       class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-500"></textarea>

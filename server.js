@@ -2,6 +2,7 @@ const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
 
 const app = express();
@@ -22,7 +23,7 @@ const pool = new Pool({
 
 // 🔹 Test de connexion PostgreSQL
 pool.connect()
-    .then(() => console.log("✅ Connecté à PostgreSQL sur Railway"))
+    .then(() => console.log("✅ Connecté à PostgreSQL"))
     .catch(err => {
         console.error("❌ Erreur de connexion PostgreSQL :", err.message);
         process.exit(1);
@@ -41,12 +42,60 @@ const initDb = async () => {
                 ingredients TEXT[],
                 instructions TEXT
             );
+
+            CREATE TABLE IF NOT EXISTS ingredients (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(255) NOT NULL UNIQUE
+            );
         `);
 
-        console.log("✅ Table 'cocktails' vérifiée/créée.");
+        console.log("✅ Tables 'cocktails' et 'ingredients' vérifiées/créées.");
         client.release();
+
+        // Insérer les ingrédients après la création des tables
+        await insertIngredients();
     } catch (error) {
         console.error("❌ Erreur lors de l'initialisation de la base de données :", error.message);
+    }
+};
+
+// 🔹 Insérer les ingrédients depuis le fichier texte
+const insertIngredients = async () => {
+    try {
+        const filePath = path.join(__dirname, 'ingredients_cocktail.txt');
+        if (!fs.existsSync(filePath)) {
+            console.error("❌ Fichier des ingrédients introuvable :", filePath);
+            return;
+        }
+
+        console.log("📂 Fichier des ingrédients trouvé :", filePath);
+
+        const data = fs.readFileSync(filePath, 'utf-8');
+
+        // Extraction des ingrédients (on enlève les catégories et les tirets)
+        const ingredients = data
+            .split('\n')
+            .map(line => line.trim())
+            .filter(line => line && !line.includes(':') && !line.startsWith('-'))
+            .map(ing => ing.replace(/^- /, ''));
+
+
+        if (ingredients.length === 0) {
+            console.error("⚠️ Aucun ingrédient extrait. Vérifiez le format du fichier.");
+            return;
+        }
+
+        // Insertion dans PostgreSQL (en évitant les doublons)
+        for (let ing of ingredients) {
+            await pool.query(
+                'INSERT INTO ingredients (name) VALUES ($1) ON CONFLICT (name) DO NOTHING',
+                [ing]
+            );
+        }
+
+        console.log("✅ Ingrédients insérés avec succès !");
+    } catch (error) {
+        console.error("❌ Erreur lors de l'insertion des ingrédients :", error.message);
     }
 };
 
@@ -96,9 +145,29 @@ app.post('/api/cocktails', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+// Endpoint API : Récupérer tous les ingrédients
+app.get('/api/ingredients', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT name FROM ingredients ORDER BY name ASC');
+        res.json(result.rows.map(row => row.name));
+    } catch (error) {
+        console.error("❌ Erreur GET /api/ingredients :", error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
 
-// 🔹 Lancer le serveur
+// 🔹 Lancer le serveur avec gestion du port dynamique
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
     console.log(`🚀 Serveur démarré sur le port ${PORT}`);
+}).on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+        console.warn(`⚠️ Port ${PORT} déjà utilisé, tentative avec un autre port...`);
+        const newPort = Math.floor(Math.random() * (4000 - 3001) + 3001);
+        app.listen(newPort, () => {
+            console.log(`🚀 Serveur redémarré sur le port ${newPort}`);
+        });
+    } else {
+        console.error("❌ Erreur lors du démarrage du serveur :", err);
+    }
 });
