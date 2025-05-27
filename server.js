@@ -17,9 +17,13 @@ if (!process.env.DATABASE_URL) {
 
 // 🔹 Configuration de la connexion PostgreSQL
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: process.env.DATABASE_URL.includes("localhost") ? false : { rejectUnauthorized: false }
+    connectionString: process.env.SUPABASE_DB_URL,
+    ssl: {
+        require: true,
+        rejectUnauthorized: false
+    }
 });
+
 
 // 🔹 Test de connexion PostgreSQL
 pool.connect()
