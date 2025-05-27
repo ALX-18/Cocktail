@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="login.css"> 
+  <title>Page de Connexion</title>
+
+</head>
+<body>
+  <div class="login-box">
+    <h2>Se connecter</h2>
+    <form action="/login" method="POST">
+      <label for="mail">Mail ou nom d'utilisateur</label>
+      <input type="text" id="mail_username" name="mail_username" required>
+
+      <label for="password">Mot de passe</label>
+      <input type="password" id="password" name="password" required>
+
+      <input type="submit" value="Se connecter">
+      
+    </form>
+  </div>
+</body>
+</html>

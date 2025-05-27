@@ -9,6 +9,26 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Servir le dossier 'register' sous l'URL '/register'
+app.use('/register', express.static(path.join(__dirname, 'public', 'register')));
+
+// Servir le dossier 'login' sous l'URL '/login'
+app.use('/login', express.static(path.join(__dirname, 'public', 'login')));
+
+// (Optionnel) Route pour accéder explicitement à la page principale de register (ex: register.html)
+app.get('/register', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'register', 'register.html'));
+});
+
+// (Optionnel) Route pour accéder explicitement à la page principale de login (ex: login.html)
+app.get('/login', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'login', 'login.html'));
+});
+
+
+
 // Vérifier si DATABASE_URL est bien défini
 if (!process.env.DATABASE_URL) {
     console.error("❌ Erreur : DATABASE_URL n'est pas défini dans .env !");
@@ -175,3 +195,5 @@ const server = app.listen(PORT, () => {
         console.error("❌ Erreur lors du démarrage du serveur :", err);
     }
 });
+// Servir tous les fichiers statiques du dossier public (déjà existant)
+
