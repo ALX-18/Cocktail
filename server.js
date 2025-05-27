@@ -36,10 +36,7 @@ app.get('/moderation', (req, res) => {
 });
 
 // Vérifier si DATABASE_URL est bien défini
-if (!process.env.DATABASE_URL) {
-    console.error("❌ Erreur : DATABASE_URL n'est pas défini dans .env !");
-    process.exit(1);
-}
+
 
 // Configuration de la connexion PostgreSQL
 const pool = new Pool({
