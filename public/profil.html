@@ -54,6 +54,7 @@
     console.log("Utilisateur chargé :", user);
 
     const token = sessionStorage.getItem('authToken');
+    console.log("Token chargé :", token);
 
     if (!user) {
       window.location.href = '/login/login.html';

@@ -261,7 +261,7 @@ app.post('/api/cocktails', authenticateToken,
 
         try {
             const { name, description, ingredients, instructions } = req.body;
-
+            const user_id = req.user.id;
         const result = await pool.query(
             'INSERT INTO cocktails (name, description, ingredients, instructions, user_id) VALUES ($1, $2, $3, $4, $5) RETURNING *',
             [name, description, ingredients, instructions, user_id || null]

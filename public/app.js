@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://localhost:3000/api";
+const API_BASE_URL = "https://cocktail-dry-pond-6336.fly.dev/api";
 const USE_MOCK_API = false;
 
 // Liste des ingrédients (à charger depuis le fichier ou à définir ici)
@@ -340,13 +340,25 @@ async function fetchCocktails(search = "") {
 
 // Fonction pour ajouter un cocktail dans la base de données
 async function addCocktailToAPI({ name, description, ingredients, instructions }) {
-  const user = JSON.parse(localStorage.getItem('currentUser'));
+  const user = JSON.parse(sessionStorage.getItem('currentUser'));
+  const token = sessionStorage.getItem('authToken'); // Récupère le token JWT stocké à la connexion
+  console.log("User:", user, "Token:", token);
   const body = user ? { name, description, ingredients, instructions, user_id: user.id } : { name, description, ingredients, instructions };
+
+  const headers = {
+    "Content-Type": "application/json",
+  };
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
   const response = await fetch(`${API_BASE_URL}/cocktails`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: headers,
     body: JSON.stringify(body)
   });
+
   if (!response.ok) throw new Error("Erreur lors de l'ajout du cocktail");
   return await response.json();
 }
