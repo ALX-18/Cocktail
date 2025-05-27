@@ -1,6 +1,9 @@
-// Gestionnaire de thème sombre
+
+const API_BASE_URL = "https://api.example.com" 
+const USE_MOCK_API = true 
+
+
 document.addEventListener("DOMContentLoaded", () => {
-  // Vérifier les préférences de l'utilisateur
   if (
     localStorage.getItem("darkMode") === "true" ||
     (window.matchMedia("(prefers-color-scheme: dark)").matches && !localStorage.getItem("darkMode"))
@@ -20,7 +23,36 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Gestionnaire de tri
   document.getElementById("sortButton").addEventListener("click", toggleSort)
+
+  // Gestionnaire pour l'auto-expansion de la barre de recherche
+  setupSearchInputExpansion()
 })
+
+// Configuration de l'auto-expansion de la barre de recherche
+function setupSearchInputExpansion() {
+  const searchInput = document.getElementById("searchInput")
+
+  // Expansion au focus
+  searchInput.addEventListener("focus", () => {
+    searchInput.classList.add("expanded")
+  })
+
+  // Réduction quand on quitte le champ si vide
+  searchInput.addEventListener("blur", () => {
+    if (searchInput.value.trim() === "") {
+      searchInput.classList.remove("expanded")
+    }
+  })
+
+  // Maintenir l'expansion si du texte est présent
+  searchInput.addEventListener("input", () => {
+    if (searchInput.value.trim() !== "") {
+      searchInput.classList.add("expanded")
+    } else {
+      searchInput.classList.remove("expanded")
+    }
+  })
+}
 
 function updateDarkModeIcon(isDark) {
   const icon = document.querySelector("#darkModeToggle i")
@@ -98,52 +130,44 @@ function formatIngredients(ingredients) {
     `
 }
 
-// Fonction pour récupérer les cocktails
+// Fonction pour récupérer les cocktails depuis l'API
 async function fetchCocktails(search = "") {
   try {
-    // Simulation - à remplacer par votre API
-    let mockedCocktails = []
-    if (localStorage.getItem("cocktails")) {
-      mockedCocktails = JSON.parse(localStorage.getItem("cocktails"))
+    let cocktails = []
+
+    if (USE_MOCK_API) {
+      // Simulation d'API avec Firebase Realtime Database
+      // En production, remplacez ceci par un appel à votre API réelle
+      const response = await fetch("https://cocktail-manager-demo-default-rtdb.firebaseio.com/cocktails.json")
+
+      if (!response.ok) {
+        // Si la base de données n'existe pas encore ou est vide, utiliser des données par défaut
+        cocktails = getDefaultCocktails()
+      } else {
+        const data = await response.json()
+        // Convertir l'objet en tableau (format Firebase)
+        cocktails = data
+          ? Object.keys(data).map((key) => ({
+              id: key,
+              ...data[key],
+            }))
+          : []
+
+        // Si aucun cocktail n'est trouvé, utiliser les données par défaut
+        if (cocktails.length === 0) {
+          cocktails = getDefaultCocktails()
+          // Sauvegarder les cocktails par défaut dans Firebase
+          await saveCocktailsToAPI(cocktails)
+        }
+      }
     } else {
-      // Données initiales
-      mockedCocktails = [
-        {
-          id: 1,
-          name: "Mojito",
-          description: "Un cocktail rafraîchissant à base de rhum, menthe et citron vert.",
-          ingredients: [
-            "45ml de rhum blanc",
-            "2 cuillères à café de sucre",
-            "1/2 citron vert",
-            "Quelques feuilles de menthe",
-            "Eau gazeuse",
-          ],
-          instructions:
-            "Piler la menthe avec le sucre et le jus de citron vert. Ajouter le rhum et compléter avec de l'eau gazeuse.",
-        },
-        {
-          id: 2,
-          name: "Margarita",
-          description: "Un classique mexicain avec tequila et citron vert.",
-          ingredients: ["50ml de tequila", "25ml de triple sec", "25ml de jus de citron vert", "Sel", "Glaçons"],
-          instructions:
-            "Frotter le bord d'un verre avec du citron vert et le tremper dans du sel. Mélanger la tequila, le triple sec et le jus de citron avec des glaçons. Filtrer dans le verre préparé.",
-        },
-        {
-          id: 3,
-          name: "Piña Colada",
-          description: "Cocktail tropical créé à Puerto Rico.",
-          ingredients: ["50ml de rhum blanc", "30ml de lait de coco", "50ml de jus d'ananas", "Glaçons"],
-          instructions:
-            "Mélanger tous les ingrédients avec des glaçons dans un mixeur jusqu'à obtenir une consistance lisse. Verser dans un verre et décorer d'une tranche d'ananas.",
-        },
-      ]
-      localStorage.setItem("cocktails", JSON.stringify(mockedCocktails))
+      // Appel à une vraie API
+      const response = await fetch(`${API_BASE_URL}/cocktails${search ? `?search=${search}` : ""}`)
+      if (!response.ok) throw new Error("Erreur lors de la récupération des cocktails")
+      cocktails = await response.json()
     }
 
     // Filtrer si nécessaire
-    let cocktails = mockedCocktails
     if (search) {
       const searchLower = search.toLowerCase()
       cocktails = cocktails.filter(
@@ -218,12 +242,12 @@ async function fetchCocktails(search = "") {
                     
                     <div class="mt-5 pt-4 border-t border-gray-100 flex justify-between">
                         <button class="text-indigo-600 hover:text-indigo-800 transition flex items-center gap-1" 
-                                onclick="editCocktail(${cocktail.id})">
+                                onclick="editCocktail('${cocktail.id}')">
                             <i class="ri-edit-line"></i>
                             <span>Modifier</span>
                         </button>
                         <button class="text-red-500 hover:text-red-700 transition flex items-center gap-1"
-                                onclick="deleteCocktail(${cocktail.id})">
+                                onclick="deleteCocktail('${cocktail.id}')">
                             <i class="ri-delete-bin-line"></i>
                             <span>Supprimer</span>
                         </button>
@@ -233,8 +257,78 @@ async function fetchCocktails(search = "") {
       cocktailList.appendChild(cocktailElement)
     })
   } catch (error) {
-    console.error(error)
+    console.error("Erreur lors du chargement des cocktails:", error)
     showNotification("Erreur lors du chargement des cocktails.", "error")
+  }
+}
+
+// Fonction pour obtenir les cocktails par défaut
+function getDefaultCocktails() {
+  return [
+    {
+      id: "c1",
+      name: "Mojito",
+      description: "Un cocktail rafraîchissant à base de rhum, menthe et citron vert.",
+      ingredients: [
+        "45ml de rhum blanc",
+        "2 cuillères à café de sucre",
+        "1/2 citron vert",
+        "Quelques feuilles de menthe",
+        "Eau gazeuse",
+      ],
+      instructions:
+        "Piler la menthe avec le sucre et le jus de citron vert. Ajouter le rhum et compléter avec de l'eau gazeuse.",
+    },
+    {
+      id: "c2",
+      name: "Margarita",
+      description: "Un classique mexicain avec tequila et citron vert.",
+      ingredients: ["50ml de tequila", "25ml de triple sec", "25ml de jus de citron vert", "Sel", "Glaçons"],
+      instructions:
+        "Frotter le bord d'un verre avec du citron vert et le tremper dans du sel. Mélanger la tequila, le triple sec et le jus de citron avec des glaçons. Filtrer dans le verre préparé.",
+    },
+    {
+      id: "c3",
+      name: "Piña Colada",
+      description: "Cocktail tropical créé à Puerto Rico.",
+      ingredients: ["50ml de rhum blanc", "30ml de lait de coco", "50ml de jus d'ananas", "Glaçons"],
+      instructions:
+        "Mélanger tous les ingrédients avec des glaçons dans un mixeur jusqu'à obtenir une consistance lisse. Verser dans un verre et décorer d'une tranche d'ananas.",
+    },
+  ]
+}
+
+// Fonction pour sauvegarder les cocktails dans l'API
+async function saveCocktailsToAPI(cocktails) {
+  if (USE_MOCK_API) {
+    try {
+      // Convertir le tableau en objet pour Firebase
+      const cocktailsObj = {}
+      cocktails.forEach((cocktail) => {
+        cocktailsObj[cocktail.id] = {
+          name: cocktail.name,
+          description: cocktail.description,
+          ingredients: cocktail.ingredients,
+          instructions: cocktail.instructions,
+        }
+      })
+
+      // Envoyer à Firebase
+      await fetch("https://cocktail-manager-demo-default-rtdb.firebaseio.com/cocktails.json", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(cocktailsObj),
+      })
+    } catch (error) {
+      console.error("Erreur lors de la sauvegarde des cocktails:", error)
+    }
+  } else {
+    // Appel à une vraie API
+    await fetch(`${API_BASE_URL}/cocktails`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(cocktails),
+    })
   }
 }
 
@@ -244,13 +338,37 @@ function editCocktail(id) {
 }
 
 // Fonction de suppression
-function deleteCocktail(id) {
+async function deleteCocktail(id) {
   if (confirm("Êtes-vous sûr de vouloir supprimer ce cocktail ?")) {
-    let cocktails = JSON.parse(localStorage.getItem("cocktails") || "[]")
-    cocktails = cocktails.filter((c) => c.id !== id)
-    localStorage.setItem("cocktails", JSON.stringify(cocktails))
-    fetchCocktails(document.getElementById("searchInput").value)
-    showNotification("Cocktail supprimé avec succès !")
+    try {
+      if (USE_MOCK_API) {
+        // Récupérer les cocktails actuels
+        const response = await fetch("https://cocktail-manager-demo-default-rtdb.firebaseio.com/cocktails.json")
+        const cocktails = await response.json()
+
+        // Supprimer le cocktail
+        delete cocktails[id]
+
+        // Mettre à jour la base de données
+        await fetch("https://cocktail-manager-demo-default-rtdb.firebaseio.com/cocktails.json", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(cocktails),
+        })
+      } else {
+        // Appel à une vraie API
+        await fetch(`${API_BASE_URL}/cocktails/${id}`, {
+          method: "DELETE",
+        })
+      }
+
+      // Recharger la liste des cocktails
+      fetchCocktails(document.getElementById("searchInput").value)
+      showNotification("Cocktail supprimé avec succès !")
+    } catch (error) {
+      console.error("Erreur lors de la suppression du cocktail:", error)
+      showNotification("Erreur lors de la suppression du cocktail.", "error")
+    }
   }
 }
 
@@ -281,20 +399,40 @@ document.getElementById("addCocktailForm").addEventListener("submit", async (e) 
   const instructions = document.getElementById("instructions").value
 
   try {
-    // Simulation - à remplacer par votre API
-    const cocktails = JSON.parse(localStorage.getItem("cocktails") || "[]")
-    const newId = cocktails.length > 0 ? Math.max(...cocktails.map((c) => c.id)) + 1 : 1
+    if (USE_MOCK_API) {
+      // Récupérer les cocktails actuels
+      const response = await fetch("https://cocktail-manager-demo-default-rtdb.firebaseio.com/cocktails.json")
+      let cocktails = {}
 
-    const newCocktail = {
-      id: newId,
-      name,
-      description,
-      ingredients,
-      instructions,
+      if (response.ok) {
+        cocktails = (await response.json()) || {}
+      }
+
+      // Générer un ID unique
+      const newId = "c" + Date.now()
+
+      // Ajouter le nouveau cocktail
+      cocktails[newId] = {
+        name,
+        description,
+        ingredients,
+        instructions,
+      }
+
+      // Mettre à jour la base de données
+      await fetch("https://cocktail-manager-demo-default-rtdb.firebaseio.com/cocktails.json", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(cocktails),
+      })
+    } else {
+      // Appel à une vraie API
+      await fetch(`${API_BASE_URL}/cocktails`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, description, ingredients, instructions }),
+      })
     }
-
-    cocktails.push(newCocktail)
-    localStorage.setItem("cocktails", JSON.stringify(cocktails))
 
     // Réinitialiser le formulaire
     document.getElementById("addCocktailForm").reset()
