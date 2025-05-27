@@ -1,7 +1,3 @@
-
-const API_BASE_URL = "" // pour utiliser le backend local
-const USE_MOCK_API = false
-
 const API_BASE_URL = "https://api.example.com" 
 const USE_MOCK_API = true 
 
