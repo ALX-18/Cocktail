@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://localhost:3000/api";
+const API_BASE_URL = "https://cocktail-six-indol.vercel.app/api";
 const USE_MOCK_API = false;
 
 // Liste des ingrédients (à charger depuis le fichier ou à définir ici)
