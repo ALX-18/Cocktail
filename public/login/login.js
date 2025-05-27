@@ -1,18 +1,54 @@
 // Gestion de la connexion utilisateur avec vérification depuis localStorage
 const loginForm = document.getElementById('loginForm');
 const loginMessage = document.getElementById('loginMessage');
-const API_URL = "http://localhost:3000/api/users"; // URL correcte de ton backend Express
+const loginBox = document.querySelector('.login-box');
+const submitBtn = loginForm.querySelector('input[type="submit"]');
+const API_URL = "/api/users"; // Utilise le chemin relatif pour compatibilité prod/dev
+
+// Animation fade-in sur la boîte au chargement
+window.addEventListener('DOMContentLoaded', () => {
+  loginBox.classList.add('fade-in');
+});
+
+function showLoader() {
+  submitBtn.disabled = true;
+  submitBtn.value = '';
+  submitBtn.classList.add('loading');
+  submitBtn.insertAdjacentHTML('afterbegin', '<span class="loader"></span>');
+}
+function hideLoader() {
+  submitBtn.disabled = false;
+  submitBtn.value = 'Se connecter';
+  submitBtn.classList.remove('loading');
+  const loader = submitBtn.querySelector('.loader');
+  if (loader) loader.remove();
+}
+
+function showMessage(msg, type = 'info') {
+  loginMessage.innerHTML = '';
+  let icon = '';
+  if (type === 'success') icon = '<i class="ri-checkbox-circle-fill text-green-500"></i> ';
+  if (type === 'error') icon = '<i class="ri-close-circle-fill text-red-500"></i> ';
+  if (type === 'info') icon = '<i class="ri-loader-4-line animate-spin text-indigo-500"></i> ';
+  loginMessage.innerHTML = icon + msg;
+  loginMessage.className = 'text-center mt-2 text-sm login-message-' + type;
+}
+
+function shakeBox() {
+  loginBox.classList.remove('shake');
+  void loginBox.offsetWidth; // trigger reflow
+  loginBox.classList.add('shake');
+}
 
 loginForm.addEventListener('submit', async function(e) {
   e.preventDefault();
   const mailOrUsername = document.getElementById('mail_username').value.trim();
   const password = document.getElementById('password').value;
 
-  loginMessage.textContent = "Connexion en cours...";
-  loginMessage.style.color = "#6366f1";
+  showMessage('Connexion en cours...', 'info');
+  showLoader();
 
   try {
-    // Requête POST pour login (à adapter selon ton backend)
     const response = await fetch(`${API_URL}/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -20,15 +56,28 @@ loginForm.addEventListener('submit', async function(e) {
     });
     if (!response.ok) throw new Error("Identifiants invalides.");
     const user = await response.json();
-    // Stocker l'utilisateur connecté (token ou user selon la réponse)
     localStorage.setItem('currentUser', JSON.stringify(user));
-    loginMessage.textContent = "Connexion réussie ! Redirection...";
-    loginMessage.style.color = "#16a34a";
+    showMessage('Connexion réussie ! Redirection...', 'success');
+    hideLoader();
     setTimeout(() => {
       window.location.href = '/';
     }, 1200);
   } catch (err) {
-    loginMessage.textContent = err.message || "Erreur de connexion.";
-    loginMessage.style.color = "#dc2626";
+    showMessage(err.message || "Erreur de connexion.", 'error');
+    hideLoader();
+    shakeBox();
   }
 });
+
+// Animation shake pour feedback visuel
+const style = document.createElement('style');
+style.innerHTML = `
+@keyframes shake {
+  0% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-6px); }
+  80% { transform: translateX(6px); }
+  100% { transform: translateX(0); }
+}`;
+document.head.appendChild(style);

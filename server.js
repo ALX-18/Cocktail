@@ -60,12 +60,14 @@ const initDb = async () => {
         const client = await pool.connect();
 
         await client.query(`
+
             CREATE TABLE IF NOT EXISTS cocktails (
                 id SERIAL PRIMARY KEY,
                 name VARCHAR(255) NOT NULL,
                 description TEXT,
                 ingredients TEXT[],
-                instructions TEXT
+                instructions TEXT,
+                user_id INTEGER REFERENCES users(id) ON DELETE SET NULL
             );
 
             CREATE TABLE IF NOT EXISTS ingredients (
@@ -91,9 +93,67 @@ const initDb = async () => {
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
                 FOREIGN KEY (cocktail_id) REFERENCES cocktails(id) ON DELETE CASCADE
             );
+            -- La contrainte UNIQUE (user_id, cocktail_id) doit être ajoutée manuellement si besoin.
         `);
 
         console.log("✅ Tables 'cocktails', 'ingredients', 'ratings' et 'favorites' vérifiées/créées.");
+
+        // Vérification de la présence de la contrainte UNIQUE sur favorites
+        const uniqueConstraintCheck = await client.query(`
+            SELECT 1 FROM information_schema.table_constraints
+            WHERE table_name='favorites' AND constraint_type='UNIQUE' AND constraint_name='unique_favorite'
+        `);
+        if (uniqueConstraintCheck.rowCount === 0) {
+            console.warn("⚠️ La contrainte UNIQUE (user_id, cocktail_id) n'est PAS présente sur la table 'favorites'. Pensez à l'ajouter manuellement :\nALTER TABLE favorites ADD CONSTRAINT unique_favorite UNIQUE (user_id, cocktail_id);");
+        } else {
+            console.log("✅ Contrainte UNIQUE (user_id, cocktail_id) présente sur la table 'favorites'.");
+        }
+
+        // Ajout automatique de la contrainte UNIQUE (user_id, cocktail_id) sur favorites
+        try {
+            await client.query(`ALTER TABLE favorites ADD CONSTRAINT unique_favorite UNIQUE (user_id, cocktail_id);`);
+            console.log("✅ Contrainte UNIQUE (user_id, cocktail_id) ajoutée sur la table 'favorites'.");
+        } catch (err) {
+            if (err.code === '42710') {
+                // 42710 = duplicate_object (contrainte déjà existante)
+                console.log("ℹ️ La contrainte UNIQUE (user_id, cocktail_id) existe déjà sur la table 'favorites'.");
+            } else if (err.code === '23505') {
+                // 23505 = unique_violation (doublons présents)
+                console.warn("⚠️ Doublons détectés dans 'favorites'. Nettoyez la table avant d'ajouter la contrainte UNIQUE.");
+            } else {
+                console.error("❌ Erreur lors de l'ajout de la contrainte UNIQUE sur 'favorites':", err.message);
+            }
+        }
+
+        // Ajout automatique de la contrainte UNIQUE (user_id, cocktail_id) sur ratings
+        try {
+            await client.query(`ALTER TABLE ratings ADD CONSTRAINT unique_rating UNIQUE (user_id, cocktail_id);`);
+            console.log("✅ Contrainte UNIQUE (user_id, cocktail_id) ajoutée sur la table 'ratings'.");
+        } catch (err) {
+            if (err.code === '42710') {
+                // 42710 = duplicate_object (contrainte déjà existante)
+                console.log("ℹ️ La contrainte UNIQUE (user_id, cocktail_id) existe déjà sur la table 'ratings'.");
+            } else if (err.code === '23505') {
+                // 23505 = unique_violation (doublons présents)
+                console.warn("⚠️ Doublons détectés dans 'ratings'. Nettoyez la table avant d'ajouter la contrainte UNIQUE.");
+            } else {
+                console.error("❌ Erreur lors de l'ajout de la contrainte UNIQUE sur 'ratings':", err.message);
+            }
+        }
+
+        // Ajout de la colonne user_id à cocktails si elle n'existe pas déjà
+        try {
+            await client.query(`ALTER TABLE cocktails ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE SET NULL`);
+            console.log("✅ Colonne user_id ajoutée à la table cocktails (si besoin).");
+        } catch (err) {
+            if (err.code === '42701') {
+                // 42701 = duplicate_column
+              } else {
+              console.log("ℹ️ La colonne user_id existe déjà dans la table cocktails.");
+                console.error("❌ Erreur lors de l'ajout de la colonne user_id à cocktails:", err.message);
+            }
+        }
+
         client.release();
 
         // Insérer les ingrédients après la création des tables
@@ -173,15 +233,15 @@ app.get('/api/cocktails', async (req, res) => {
 app.post('/api/cocktails', async (req, res) => {
     try {
         console.log("📥 Données reçues :", req.body);
-        const { name, description, ingredients, instructions } = req.body;
+        const { name, description, ingredients, instructions, user_id } = req.body;
 
         if (!name || !ingredients || !instructions) {
             return res.status(400).json({ error: "Tous les champs sont obligatoires !" });
         }
 
         const result = await pool.query(
-            'INSERT INTO cocktails (name, description, ingredients, instructions) VALUES ($1, $2, $3, $4) RETURNING *',
-            [name, description, ingredients, instructions]
+            'INSERT INTO cocktails (name, description, ingredients, instructions, user_id) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+            [name, description, ingredients, instructions, user_id || null]
         );
 
         res.status(201).json(result.rows[0]);

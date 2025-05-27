@@ -353,10 +353,12 @@ async function fetchCocktails(search = "") {
 
 // Fonction pour ajouter un cocktail dans la base de données
 async function addCocktailToAPI({ name, description, ingredients, instructions }) {
+  const user = JSON.parse(localStorage.getItem('currentUser'));
+  const body = user ? { name, description, ingredients, instructions, user_id: user.id } : { name, description, ingredients, instructions };
   const response = await fetch(`${API_BASE_URL}/cocktails`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, description, ingredients, instructions })
+    body: JSON.stringify(body)
   });
   if (!response.ok) throw new Error("Erreur lors de l'ajout du cocktail");
   return await response.json();
@@ -475,7 +477,7 @@ function setupFavoritesAndRatingsAfterCocktails() {
       showNotification('Lien du cocktail copié !');
     });
   });
-  if (window.initFavoritesAndRatings) {
+  if (typeof window.initFavoritesAndRatings === "function") {
     window.initFavoritesAndRatings();
     console.log('initFavoritesAndRatings triggered from setupFavoritesAndRatingsAfterCocktails');
   } else {
