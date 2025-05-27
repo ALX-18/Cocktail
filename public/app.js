@@ -1,16 +1,7 @@
 const API_BASE_URL = "http://localhost:3000/api";
 const USE_MOCK_API = false;
 
-
 // Liste des ingrédients (à charger depuis le fichier ou à définir ici)
-const INGREDIENTS_LIST = [
-  "Vodka", "Rhum blanc", "Rhum ambré", "Gin", "Tequila", "Whisky", "Bourbon", "Cognac", "Cachaça", "Vermouth blanc", "Vermouth rouge", "Triple sec", "Cointreau", "Grand Marnier", "Amaretto", "Liqueur de café", "Liqueur de cerise", "Liqueur de noisette", "Liqueur de menthe", "Liqueur de cassis", "Jus d'orange", "Jus de citron", "Jus de citron vert", "Jus d'ananas", "Jus de pamplemousse", "Jus de pomme", "Jus de cranberry", "Jus de mangue", "Jus de tomate", "Soda au gingembre", "Eau gazeuse", "Tonic", "Cola", "Limonade", "Sirop de sucre de canne", "Sirop d'érable", "Sirop de grenadine", "Sirop de menthe", "Sirop d'orgeat", "Sirop de coco", "Sirop de fraise", "Sirop de vanille", "Sirop de caramel", "Sirop de fruit de la passion", "Citron", "Citron vert", "Orange", "Ananas", "Cerise", "Fraise", "Framboise", "Mûre", "Menthe fraîche", "Basilic", "Concombre", "Olive", "Cannelle", "Noix de muscade", "Sel", "Sucre", "Glaçons"
-];
-
-// Liste des liquides (pour la gestion des unités)
-const LIQUID_INGREDIENTS = [
-  "Vodka", "Rhum blanc", "Rhum ambré", "Gin", "Tequila", "Whisky", "Bourbon", "Cognac", "Cachaça", "Vermouth blanc", "Vermouth rouge", "Triple sec", "Cointreau", "Grand Marnier", "Amaretto", "Liqueur de café", "Liqueur de cerise", "Liqueur de noisette", "Liqueur de menthe", "Liqueur de cassis", "Jus d'orange", "Jus de citron", "Jus de citron vert", "Jus d'ananas", "Jus de pamplemousse", "Jus de pomme", "Jus de cranberry", "Jus de mangue", "Jus de tomate", "Soda au gingembre", "Eau gazeuse", "Tonic", "Cola", "Limonade", "Sirop de sucre de canne", "Sirop d'érable", "Sirop de grenadine", "Sirop de menthe", "Sirop d'orgeat", "Sirop de coco", "Sirop de fraise", "Sirop de vanille", "Sirop de caramel", "Sirop de fruit de la passion"
-];
 
 // Initialisation du menu déroulant d'ingrédients
 function createIngredientRow(ingredientsList, liquidIngredients, selected = "", quantity = "") {

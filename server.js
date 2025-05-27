@@ -5,11 +5,13 @@ const path = require('path');
 const fs = require('fs');
 const bcrypt = require('bcrypt');
 require('dotenv').config();
+const jwt = require('jsonwebtoken');
+const { body, validationResult } = require('express-validator');
+const rateLimit = require('express-rate-limit');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
-
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Servir le dossier 'register' sous l'URL '/register'
@@ -27,8 +29,13 @@ app.get('/register', (req, res) => {
 app.get('/login', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login', 'login.html'));
 });
+app.get('/profil', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'profil.html'));
+});
 
-
+app.get('/moderation', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'moderation', 'moderation.html'));
+});
 
 // Vérifier si DATABASE_URL est bien défini
 if (!process.env.DATABASE_URL) {
@@ -36,7 +43,7 @@ if (!process.env.DATABASE_URL) {
     process.exit(1);
 }
 
-// 🔹 Configuration de la connexion PostgreSQL
+// Configuration de la connexion PostgreSQL
 const pool = new Pool({
     connectionString: process.env.SUPABASE_DB_URL,
     ssl: {
@@ -45,8 +52,7 @@ const pool = new Pool({
     }
 });
 
-
-// 🔹 Test de connexion PostgreSQLs
+// Test de connexion PostgreSQL
 pool.connect()
     .then(() => console.log("✅ Connecté à PostgreSQL"))
     .catch(err => {
@@ -54,7 +60,7 @@ pool.connect()
         process.exit(1);
     });
 
-// 🔹 Initialisation de la base de données
+// Initialisation de la base de données
 const initDb = async () => {
     try {
         const client = await pool.connect();
@@ -105,7 +111,23 @@ const initDb = async () => {
     }
 };
 
-// 🔹 Insérer les ingrédients depuis le fichier texte
+function authenticateToken(req, res, next) {
+    const authHeader = req.headers['authorization']; // Bearer TOKEN
+    const token = authHeader && authHeader.split(' ')[1];
+    if (!token) return res.status(401).json({ error: 'Token manquant' });
+
+    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+        if (err) return res.status(403).json({ error: 'Token invalide' });
+        req.user = user; // données du token (id, email, username)
+        next();
+    });
+}
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 5,
+    message: "Trop de tentatives de connexion, veuillez réessayer plus tard."
+});
+// Insérer les ingrédients depuis le fichier texte
 const insertIngredientsToTable = async (tableName, fileName) => {
     try {
         const filePath = path.join(__dirname, fileName);
@@ -143,13 +165,11 @@ const insertIngredientsToTable = async (tableName, fileName) => {
     }
 };
 
-
 initDb();
 
-// 🔹 Servir les fichiers statiques du dossier "public"
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 🔹 Endpoint API : Récupérer tous les cocktails
+// Endpoint API : Récupérer tous les cocktails
 app.get('/api/cocktails', async (req, res) => {
     try {
         const search = req.query.search || '';
@@ -169,28 +189,37 @@ app.get('/api/cocktails', async (req, res) => {
     }
 });
 
-// 🔹 Endpoint API : Ajouter un cocktail
-app.post('/api/cocktails', async (req, res) => {
-    try {
-        console.log("📥 Données reçues :", req.body);
-        const { name, description, ingredients, instructions } = req.body;
-
-        if (!name || !ingredients || !instructions) {
-            return res.status(400).json({ error: "Tous les champs sont obligatoires !" });
+// Endpoint API : Ajouter un cocktail
+app.post('/api/cocktails', authenticateToken,
+    [
+        body('name').notEmpty().withMessage('Nom du cocktail requis').trim().escape(),
+        body('description').optional().trim().escape(),
+        body('ingredients').isArray({ min: 1 }).withMessage('Au moins un ingrédient requis'),
+        body('ingredients.*').isString().trim().escape(),
+        body('instructions').notEmpty().withMessage('Instructions requises').trim().escape(),
+    ],
+    async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
         }
 
-        const result = await pool.query(
-            'INSERT INTO cocktails (name, description, ingredients, instructions) VALUES ($1, $2, $3, $4) RETURNING *',
-            [name, description, ingredients, instructions]
-        );
+        try {
+            const { name, description, ingredients, instructions } = req.body;
 
-        res.status(201).json(result.rows[0]);
-    } catch (error) {
-        console.error("❌ Erreur POST /api/cocktails :", error.message);
-        res.status(500).json({ error: error.message });
+            const result = await pool.query(
+                'INSERT INTO cocktails (name, description, ingredients, instructions) VALUES ($1, $2, $3, $4) RETURNING *',
+                [name, description, ingredients, instructions]
+            );
+
+            res.status(201).json(result.rows[0]);
+        } catch (error) {
+            console.error("❌ Erreur POST /api/cocktails :", error.message);
+            res.status(500).json({ error: error.message });
+        }
     }
-});
-// Endpoint API : Récupérer tous les ingrédients
+);
+
 // Route pour récupérer les ingrédients solides
 app.get('/api/solid_ingredients', async (req, res) => {
     try {
@@ -214,116 +243,170 @@ app.get('/api/liquid_ingredients', async (req, res) => {
 });
 
 // Register
-app.post('/api/users/register', async (req, res) => {
-  const { email, username, password, urlavatar } = req.body;
-  if (!email || !username || !password) return res.status(400).json({ error: 'Champs requis manquants.' });
-  try {
-    const userExists = await pool.query('SELECT 1 FROM users WHERE email = $1 OR username = $2', [email, username]);
-    if (userExists.rowCount > 0) return res.status(409).json({ error: "Email ou nom d'utilisateur déjà utilisé." });
-    const hash = await bcrypt.hash(password, 10);
-    const result = await pool.query(
-      'INSERT INTO users (email, username, password, urlavatar) VALUES ($1, $2, $3, $4) RETURNING id, email, username, urlavatar',
-      [email, username, hash, urlavatar || null]
-    );
-    res.status(201).json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: 'Erreur serveur.' });
-  }
-});
+app.post('/api/users/register',
+    [
+        body('email').isEmail().withMessage('Email invalide').normalizeEmail(),
+        body('username').isLength({ min: 3 }).withMessage('Nom d\'utilisateur trop court').trim().escape(),
+        body('password').isLength({ min: 6 }).withMessage('Mot de passe trop court'),
+        body('urlavatar').optional().isURL().withMessage('URL d\'avatar invalide'),
+    ],
+    async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+
+        const { email, username, password, urlavatar } = req.body;
+        try {
+            const userExists = await pool.query('SELECT 1 FROM users WHERE email = $1 OR username = $2', [email, username]);
+            if (userExists.rowCount > 0) return res.status(409).json({ error: "Email ou nom d'utilisateur déjà utilisé." });
+            const hash = await bcrypt.hash(password, 10);
+            const result = await pool.query(
+                'INSERT INTO users (email, username, password, urlavatar) VALUES ($1, $2, $3, $4) RETURNING id, email, username, urlavatar',
+                [email, username, hash, urlavatar || null]
+            );
+            res.status(201).json(result.rows[0]);
+        } catch (err) {
+            res.status(500).json({ error: 'Erreur serveur.' });
+        }
+    }
+);
 
 // Login
-app.post('/api/users/login', async (req, res) => {
-  const { mailOrUsername, password } = req.body;
-  if (!mailOrUsername || !password) return res.status(400).json({ error: 'Champs requis manquants.' });
-  try {
-    const userRes = await pool.query(
-      'SELECT * FROM users WHERE email = $1 OR username = $1',
-      [mailOrUsername]
-    );
-    if (userRes.rowCount === 0) return res.status(401).json({ error: 'Identifiants invalides.' });
-    const user = userRes.rows[0];
-    const match = await bcrypt.compare(password, user.password);
-    if (!match) return res.status(401).json({ error: 'Identifiants invalides.' });
-    // Ne pas renvoyer le hash !
-    const { id, email, username, urlavatar } = user;
-    res.json({ id, email, username, urlavatar });
-  } catch (err) {
-    res.status(500).json({ error: 'Erreur serveur.' });
-  }
-});
+app.post('/api/users/login',loginLimiter,
+    [
+        body('mailOrUsername').notEmpty().withMessage('Email ou nom d\'utilisateur requis').trim().escape(),
+        body('password').notEmpty().withMessage('Mot de passe requis')
+    ],
+    async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
 
+        const { mailOrUsername, password } = req.body;
+
+        try {
+            const userRes = await pool.query(
+                'SELECT * FROM users WHERE email = $1 OR username = $1',
+                [mailOrUsername]
+            );
+
+            if (userRes.rowCount === 0) {
+                return res.status(401).json({ error: 'Identifiants invalides.' });
+            }
+
+            const user = userRes.rows[0];
+            const match = await bcrypt.compare(password, user.password);
+            if (!match) {
+                return res.status(401).json({ error: 'Identifiants invalides.' });
+            }
+
+            const token = jwt.sign(
+                { id: user.id, email: user.email, username: user.username, role: user.role },
+                process.env.JWT_SECRET,
+                { expiresIn: '1h' }
+            );
+
+            const { id, email, username, urlavatar,role } = user;
+            res.json({
+                token,
+                user: { id, email, username, urlavatar, role } // inclus le rôle ici
+            });
+
+        } catch (err) {
+            res.status(500).json({ error: 'Erreur serveur.' });
+        }
+    });
 
 // Get ratings for a user
-app.get('/api/ratings', async (req, res) => {
-  const { user_id } = req.query;
-  if (!user_id) return res.status(400).json({ error: 'user_id requis' });
-  try {
-    const result = await pool.query('SELECT * FROM ratings WHERE user_id = $1', [user_id]);
-    res.json(result.rows);
-  } catch (err) {
-    res.status(500).json({ error: 'Erreur serveur' });
-  }
+app.get('/api/ratings', authenticateToken, async (req, res) => {
+    const { user_id } = req.query;
+    if (!user_id) return res.status(400).json({ error: 'user_id requis' });
+    try {
+        const result = await pool.query('SELECT * FROM ratings WHERE user_id = $1', [user_id]);
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
 });
 
 // Add or update a rating
-app.post('/api/ratings', async (req, res) => {
-  const { user_id, cocktail_id, rating } = req.body;
-  if (!user_id || !cocktail_id || !rating) return res.status(400).json({ error: 'Champs requis manquants' });
-  try {
-    // Upsert
-    const result = await pool.query(
-      `INSERT INTO ratings (user_id, cocktail_id, rating) VALUES ($1, $2, $3)
-       ON CONFLICT (user_id, cocktail_id) DO UPDATE SET rating = $3 RETURNING *`,
-      [user_id, cocktail_id, rating]
-    );
-    res.json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: 'Erreur serveur' });
-  }
-});
+app.post('/api/ratings', authenticateToken,
+    [
+        body('user_id').isInt().withMessage('user_id invalide'),
+        body('cocktail_id').isInt().withMessage('cocktail_id invalide'),
+        body('rating').isInt({ min: 1, max: 5 }).withMessage('rating doit être entre 1 et 5')
+    ],
+    async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+        const { user_id, cocktail_id, rating } = req.body;
+        try {
+            // Upsert
+            const result = await pool.query(
+                `INSERT INTO ratings (user_id, cocktail_id, rating) VALUES ($1, $2, $3)
+         ON CONFLICT (user_id, cocktail_id) DO UPDATE SET rating = $3 RETURNING *`,
+                [user_id, cocktail_id, rating]
+            );
+            res.json(result.rows[0]);
+        } catch (err) {
+            res.status(500).json({ error: 'Erreur serveur' });
+        }
+    }
+);
 
 // Get favorites for a user
-app.get('/api/favorites', async (req, res) => {
-  const { user_id } = req.query;
-  if (!user_id) return res.status(400).json({ error: 'user_id requis' });
-  try {
-    const result = await pool.query('SELECT * FROM favorites WHERE user_id = $1', [user_id]);
-    res.json(result.rows);
-  } catch (err) {
-    res.status(500).json({ error: 'Erreur serveur' });
-  }
+app.get('/api/favorites', authenticateToken, async (req, res) => {
+    const { user_id } = req.query;
+    if (!user_id) return res.status(400).json({ error: 'user_id requis' });
+    try {
+        const result = await pool.query('SELECT * FROM favorites WHERE user_id = $1', [user_id]);
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
 });
 
 // Add a favorite
-app.post('/api/favorites', async (req, res) => {
-  const { user_id, cocktail_id } = req.body;
-  if (!user_id || !cocktail_id) return res.status(400).json({ error: 'Champs requis manquants' });
-  try {
-    const result = await pool.query(
-      `INSERT INTO favorites (user_id, cocktail_id) VALUES ($1, $2)
-       ON CONFLICT (user_id, cocktail_id) DO NOTHING RETURNING *`,
-      [user_id, cocktail_id]
-    );
-    res.json(result.rows[0] || {});
-  } catch (err) {
-    res.status(500).json({ error: 'Erreur serveur' });
-  }
-});
+app.post('/api/favorites', authenticateToken,
+    [
+        body('user_id').isInt().withMessage('user_id invalide'),
+        body('cocktail_id').isInt().withMessage('cocktail_id invalide')
+    ],
+    async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+        const { user_id, cocktail_id } = req.body;
+        try {
+            const result = await pool.query(
+                `INSERT INTO favorites (user_id, cocktail_id) VALUES ($1, $2)
+         ON CONFLICT (user_id, cocktail_id) DO NOTHING RETURNING *`,
+                [user_id, cocktail_id]
+            );
+            res.json(result.rows[0] || {});
+        } catch (err) {
+            res.status(500).json({ error: 'Erreur serveur' });
+        }
+    }
+);
 
 // Remove a favorite
-app.delete('/api/favorites', async (req, res) => {
-  // Récupère depuis req.query au lieu de req.body
-  const { user_id, cocktail_id } = req.query;
-  if (!user_id || !cocktail_id) return res.status(400).json({ error: 'Champs requis manquants' });
-  try {
-    await pool.query('DELETE FROM favorites WHERE user_id = $1 AND cocktail_id = $2', [user_id, cocktail_id]);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: 'Erreur serveur' });
-  }
+app.delete('/api/favorites', authenticateToken, async (req, res) => {
+    // Récupère depuis req.query au lieu de req.body
+    const { user_id, cocktail_id } = req.query;
+    if (!user_id || !cocktail_id) return res.status(400).json({ error: 'Champs requis manquants' });
+    try {
+        await pool.query('DELETE FROM favorites WHERE user_id = $1 AND cocktail_id = $2', [user_id, cocktail_id]);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
 });
 
-// 🔹 Lancer le serveur avec gestion du port dynamique
+// Lancer le serveur avec gestion du port dynamique
 const PORT = process.env.PORT || 3000;
 const server = app.listen(PORT, () => {
     console.log(`🚀 Serveur démarré sur le port ${PORT}`);
@@ -338,4 +421,45 @@ const server = app.listen(PORT, () => {
         console.error("❌ Erreur lors du démarrage du serveur :", err);
     }
 });
+function isAdmin(req, res, next) {
+    if (req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Accès refusé : Admin uniquement' });
+    }
+    next();
+}
 
+// Route pour récupérer tous les utilisateurs (admin only)
+app.get('/api/admin/users', authenticateToken, isAdmin, async (req, res) => {
+    try {
+        const result = await pool.query('SELECT id, email, username, role FROM users ORDER BY username ASC');
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// Route pour modifier le rôle d'un utilisateur (admin only)
+app.patch('/api/admin/users/:id/role', authenticateToken, isAdmin, async (req, res) => {
+    const { id } = req.params;
+    const { role } = req.body;
+    if (!['user', 'admin'].includes(role)) return res.status(400).json({ error: 'Rôle invalide' });
+
+    try {
+        const result = await pool.query('UPDATE users SET role = $1 WHERE id = $2 RETURNING id, username, role', [role, id]);
+        if (result.rowCount === 0) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+        res.json(result.rows[0]);
+    } catch (err) {
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// Route pour supprimer un cocktail (admin only)
+app.delete('/api/admin/cocktails/:id', authenticateToken, isAdmin, async (req, res) => {
+    const { id } = req.params;
+    try {
+        await pool.query('DELETE FROM cocktails WHERE id = $1', [id]);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
