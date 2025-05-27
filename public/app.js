@@ -1,6 +1,7 @@
 
-const API_BASE_URL = "https://api.example.com" 
-const USE_MOCK_API = true 
+const API_BASE_URL = "" // pour utiliser le backend local
+const USE_MOCK_API = false
+
 
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -137,130 +138,66 @@ async function fetchCocktails(search = "") {
 
     if (USE_MOCK_API) {
       // Simulation d'API avec Firebase Realtime Database
-      // En production, remplacez ceci par un appel à votre API réelle
       const response = await fetch("https://cocktail-manager-demo-default-rtdb.firebaseio.com/cocktails.json")
 
       if (!response.ok) {
-        // Si la base de données n'existe pas encore ou est vide, utiliser des données par défaut
         cocktails = getDefaultCocktails()
       } else {
         const data = await response.json()
-        // Convertir l'objet en tableau (format Firebase)
         cocktails = data
-          ? Object.keys(data).map((key) => ({
-              id: key,
-              ...data[key],
-            }))
-          : []
+            ? Object.keys(data).map((key) => ({ id: key, ...data[key] }))
+            : []
 
-        // Si aucun cocktail n'est trouvé, utiliser les données par défaut
         if (cocktails.length === 0) {
           cocktails = getDefaultCocktails()
-          // Sauvegarder les cocktails par défaut dans Firebase
           await saveCocktailsToAPI(cocktails)
         }
       }
     } else {
-      // Appel à une vraie API
-      const response = await fetch(`${API_BASE_URL}/cocktails${search ? `?search=${search}` : ""}`)
+      // Appel à l'API Express connectée à PostgreSQL
+      const response = await fetch(`/api/cocktails${search ? `?search=${encodeURIComponent(search)}` : ""}`)
       if (!response.ok) throw new Error("Erreur lors de la récupération des cocktails")
       cocktails = await response.json()
     }
 
-    // Filtrer si nécessaire
-    if (search) {
-      const searchLower = search.toLowerCase()
-      cocktails = cocktails.filter(
-        (cocktail) =>
-          cocktail.name.toLowerCase().includes(searchLower) ||
-          (cocktail.description && cocktail.description.toLowerCase().includes(searchLower)) ||
-          (cocktail.ingredients && cocktail.ingredients.some((ing) => ing.toLowerCase().includes(searchLower))),
-      )
-    }
-
-    // Trier les cocktails
-    cocktails.sort((a, b) => {
-      if (currentSort === "asc") {
-        return a.name.localeCompare(b.name)
-      } else {
-        return b.name.localeCompare(a.name)
-      }
-    })
-
     const cocktailList = document.getElementById("cocktailList")
-    cocktailList.innerHTML = "" // Vider la liste avant de la remplir
+    cocktailList.innerHTML = "" // Vider la liste avant de remplir
 
     if (cocktails.length === 0) {
       cocktailList.innerHTML = `
-                <div class="col-span-full flex flex-col items-center justify-center py-10 text-center">
-                    <i class="ri-search-2-line text-5xl text-gray-400 mb-4"></i>
-                    <p class="text-xl text-gray-500">Aucun cocktail trouvé</p>
-                    <p class="text-gray-400 mt-2">Essayez d'autres termes de recherche ou ajoutez un nouveau cocktail.</p>
-                </div>
-            `
+        <p class="col-span-full text-center text-gray-500">Aucun cocktail trouvé.</p>
+      `
       return
     }
 
     cocktails.forEach((cocktail) => {
-      const cocktailImage = getRandomCocktailImage()
       const cocktailElement = document.createElement("div")
-      cocktailElement.className = "cocktail-card bg-white rounded-xl shadow-md overflow-hidden transition-all group"
+      cocktailElement.className = "cocktail-card bg-white rounded-lg shadow-md p-4 border border-gray-200 hover:shadow-lg"
       cocktailElement.innerHTML = `
-                <div class="relative h-48 overflow-hidden">
-                    <img src="${cocktailImage}" alt="${cocktail.name}" class="w-full h-full object-cover cocktail-image">
-                    <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end">
-                        <div class="p-4 text-white">
-                            <h4 class="font-semibold">${cocktail.name}</h4>
-                        </div>
-                    </div>
-                </div>
-                <div class="p-5">
-                    <h3 class="text-xl font-semibold mb-2">${cocktail.name}</h3>
-                    <p class="text-gray-600 mb-4">${cocktail.description || "Aucune description disponible."}</p>
-                    
-                    <div class="mb-3">
-                        <h4 class="font-medium text-gray-700 mb-2 flex items-center gap-1">
-                            <i class="ri-flask-line"></i>
-                            <span>Ingrédients</span>
-                        </h4>
-                        ${formatIngredients(cocktail.ingredients)}
-                    </div>
-                    
-                    ${
-                      cocktail.instructions
-                        ? `
-                    <div>
-                        <h4 class="font-medium text-gray-700 mb-2 flex items-center gap-1">
-                            <i class="ri-file-list-line"></i>
-                            <span>Instructions</span>
-                        </h4>
-                        <p class="text-gray-600">${cocktail.instructions}</p>
-                    </div>
-                    `
-                        : ""
-                    }
-                    
-                    <div class="mt-5 pt-4 border-t border-gray-100 flex justify-between">
-                        <button class="text-indigo-600 hover:text-indigo-800 transition flex items-center gap-1" 
-                                onclick="editCocktail('${cocktail.id}')">
-                            <i class="ri-edit-line"></i>
-                            <span>Modifier</span>
-                        </button>
-                        <button class="text-red-500 hover:text-red-700 transition flex items-center gap-1"
-                                onclick="deleteCocktail('${cocktail.id}')">
-                            <i class="ri-delete-bin-line"></i>
-                            <span>Supprimer</span>
-                        </button>
-                    </div>
-                </div>
-            `
+        <h3 class="text-lg font-semibold mb-2">${cocktail.name}</h3>
+        <p class="text-gray-600 mb-3">${cocktail.description || "Aucune description disponible."}</p>
+        <div class="mb-2">
+          <h4 class="font-medium text-slate-700">Ingrédients:</h4>
+          <p>${cocktail.ingredients ? cocktail.ingredients.join(", ") : "N/A"}</p>
+        </div>
+        ${
+          cocktail.instructions
+              ? `
+          <div>
+            <h4 class="font-medium text-slate-700">Instructions:</h4>
+            <p class="text-gray-600">${cocktail.instructions}</p>
+          </div>`
+              : ""
+      }
+      `
       cocktailList.appendChild(cocktailElement)
     })
   } catch (error) {
-    console.error("Erreur lors du chargement des cocktails:", error)
-    showNotification("Erreur lors du chargement des cocktails.", "error")
+    console.error("Erreur lors du chargement des cocktails :", error)
+    alert("Erreur lors du chargement des cocktails.")
   }
 }
+
 
 // Fonction pour obtenir les cocktails par défaut
 function getDefaultCocktails() {
@@ -331,7 +268,23 @@ async function saveCocktailsToAPI(cocktails) {
     })
   }
 }
-
+async function addCocktail(cocktail) {
+  try {
+    const response = await fetch('/api/cocktails', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cocktail)
+    });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Erreur inconnue lors de l’ajout');
+    }
+    return await response.json(); // cocktail ajouté avec id etc.
+  } catch (err) {
+    console.error('Erreur ajout cocktail:', err);
+    throw err;
+  }
+}
 // Fonction d'édition (à implémenter)
 function editCocktail(id) {
   alert(`Édition du cocktail #${id} - Fonctionnalité à implémenter`)
@@ -471,4 +424,41 @@ function showNotification(message, type = "success") {
     notification.style.transform = "translateX(100%)"
   }, 3000)
 }
+document.getElementById("addCocktailForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
 
+  const name = document.getElementById("name").value.trim();
+  const description = document.getElementById("description").value.trim();
+  const ingredients = document
+      .getElementById("ingredients")
+      .value.split(",")
+      .map(i => i.trim())
+      .filter(i => i.length > 0);
+  const instructions = document.getElementById("instructions").value.trim();
+
+  if (!name || ingredients.length === 0 || !instructions) {
+    alert("Merci de remplir le nom, les ingrédients et les instructions.");
+    return;
+  }
+
+  try {
+    const response = await fetch("/api/cocktails", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, description, ingredients, instructions }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Erreur inconnue lors de l'ajout");
+    }
+
+    document.getElementById("addCocktailForm").reset();
+    alert("Cocktail ajouté avec succès !");
+    fetchCocktails(); // Recharge la liste des cocktails affichés
+
+  } catch (error) {
+    console.error("Erreur lors de l'ajout du cocktail :", error);
+    alert("Erreur lors de l'ajout du cocktail : " + error.message);
+  }
+});
