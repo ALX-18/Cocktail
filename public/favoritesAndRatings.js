@@ -7,32 +7,50 @@
 
 // Récupérer l'utilisateur connecté
 function getCurrentUser() {
-  return JSON.parse(localStorage.getItem('currentUser'));
+  return JSON.parse(sessionStorage.getItem('currentUser'));
 }
-
+function getAuthToken() {
+  return sessionStorage.getItem('authToken');
+}
 // Favoris via API
 async function fetchFavorites() {
   const user = getCurrentUser();
   if (!user) return [];
-  const res = await fetch(`${API_BASE_URL}/favorites?user_id=${user.id}`);
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}/favorites?user_id=${user.id}`, {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
   if (!res.ok) return [];
   return await res.json(); // array of {cocktail_id,...}
 }
+
 async function isFavorite(id) {
   const favs = await fetchFavorites();
   return favs.some(f => String(f.cocktail_id) === String(id));
 }
+
 async function toggleFavorite(id) {
   const user = getCurrentUser();
   if (!user) return;
+  const token = getAuthToken();
   const favs = await fetchFavorites();
   const isFav = favs.some(f => String(f.cocktail_id) === String(id));
   if (isFav) {
-    await fetch(`${API_BASE_URL}/favorites?user_id=${user.id}&cocktail_id=${id}`, { method: 'DELETE' });
+    await fetch(`${API_BASE_URL}/favorites?user_id=${user.id}&cocktail_id=${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
   } else {
     await fetch(`${API_BASE_URL}/favorites`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
       body: JSON.stringify({ user_id: user.id, cocktail_id: id })
     });
   }
@@ -42,23 +60,34 @@ async function toggleFavorite(id) {
 async function fetchRatings() {
   const user = getCurrentUser();
   if (!user) return {};
-  const res = await fetch(`${API_BASE_URL}/ratings?user_id=${user.id}`);
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}/ratings?user_id=${user.id}`, {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
   if (!res.ok) return {};
   const arr = await res.json(); // [{cocktail_id, rating}]
   const ratings = {};
   arr.forEach(r => { ratings[r.cocktail_id] = r.rating; });
   return ratings;
 }
+
 async function getUserRating(cocktailId) {
   const ratings = await fetchRatings();
   return ratings[cocktailId] || 0;
 }
+
 async function setUserRating(cocktailId, rating, ratingEl) {
   const user = getCurrentUser();
   if (!user) return;
+  const token = getAuthToken();
   await fetch(`${API_BASE_URL}/ratings`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
     body: JSON.stringify({ user_id: user.id, cocktail_id: cocktailId, rating })
   });
   // Met à jour l'affichage des étoiles

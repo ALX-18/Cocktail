@@ -52,6 +52,9 @@
     // Charger les infos du user connecté
     const user = JSON.parse(sessionStorage.getItem('currentUser'));
     console.log("Utilisateur chargé :", user);
+
+    const token = sessionStorage.getItem('authToken');
+
     if (!user) {
       window.location.href = '/login/login.html';
     } else {
@@ -80,10 +83,18 @@
       const cocktailsRes = await fetch('/api/cocktails');
       const cocktails = await cocktailsRes.json();
       // Favoris (API)
-      const favRes = await fetch(`/api/favorites?user_id=${user.id}`);
+      const favRes = await fetch(`/api/favorites?user_id=${user.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       const favs = favRes.ok ? await favRes.json() : [];
       // Notes (API)
-      const ratingsRes = await fetch(`/api/ratings?user_id=${user.id}`);
+      const ratingsRes = await fetch(`/api/ratings?user_id=${user.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       const ratingsArr = ratingsRes.ok ? await ratingsRes.json() : [];
       const ratings = {};
       ratingsArr.forEach(r => { ratings[r.cocktail_id] = r.rating; });
