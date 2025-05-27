@@ -344,6 +344,7 @@ async function fetchCocktails(search = "") {
       `;
       cocktailList.appendChild(cocktailElement);
     });
+    setupFavoritesAndRatingsAfterCocktails();
   } catch (error) {
     console.error("Erreur lors du chargement des cocktails:", error);
     showNotification("Erreur lors du chargement des cocktails.", "error");
@@ -466,7 +467,7 @@ function showNotification(message, type = "success") {
 }
 
 // Après le forEach, ajouter la gestion des interactions : notation, favoris, partage
-setTimeout(() => {
+function setupFavoritesAndRatingsAfterCocktails() {
   document.querySelectorAll('.share-btn').forEach(btn => {
     btn.addEventListener('click', function() {
       const url = window.location.href.split('#')[0] + '#cocktail-' + btn.dataset.id;
@@ -474,7 +475,11 @@ setTimeout(() => {
       showNotification('Lien du cocktail copié !');
     });
   });
-  // Initialiser favoris et ratings dynamiques via API
-  if (window.initFavoritesAndRatings) window.initFavoritesAndRatings();
-}, 0);
+  if (window.initFavoritesAndRatings) {
+    window.initFavoritesAndRatings();
+    console.log('initFavoritesAndRatings triggered from setupFavoritesAndRatingsAfterCocktails');
+  } else {
+    console.warn('window.initFavoritesAndRatings is not defined');
+  }
+}
 

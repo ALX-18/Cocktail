@@ -59,27 +59,35 @@
       window.location.href = '/login/login.html';
     };
 
-    // Affichage des cocktails créés, favoris et notes
+    // Affichage des cocktails créés, favoris et notes (localStorage)
     async function loadProfileData() {
       if (!user) return;
       // Récupérer tous les cocktails
       const cocktailsRes = await fetch('/api/cocktails');
       const cocktails = await cocktailsRes.json();
-      // Récupérer les ratings du user
-      const ratingsRes = await fetch(`/api/ratings?user_id=${user.id}`);
-      const ratings = await ratingsRes.json();
-      // Récupérer les favoris du user
-      const favsRes = await fetch(`/api/favorites?user_id=${user.id}`);
-      const favorites = await favsRes.json();
+      // Favoris (localStorage)
+      const favIds = JSON.parse(localStorage.getItem('favorites') || '[]');
+      console.log('[DEBUG] Favoris localStorage:', favIds);
+      // Notes (localStorage)
+      const ratings = JSON.parse(localStorage.getItem('ratings') || '{}');
+      console.log('[DEBUG] Ratings localStorage:', ratings);
 
-      // Cocktails créés (si tu ajoutes un champ user_id dans la table cocktails)
-      const myCocktails = cocktails.filter(c => c.user_id === user.id);
-      document.getElementById('userCocktails').innerHTML = myCocktails.length ? myCocktails.map(c => `<div class="p-3 bg-gray-100 rounded flex items-center gap-2"><i class='ri-cup-line text-indigo-500'></i> <span>${c.name}</span></div>`).join('') : '<p class="text-gray-400">Aucun cocktail créé.</p>';
+      // Cocktails créés (localStorage)
+      const createdIds = JSON.parse(localStorage.getItem('createdCocktails') || '[]');
+      console.log('[DEBUG] Cocktails créés localStorage:', createdIds);
+      if (createdIds.length) {
+        document.getElementById('userCocktails').innerHTML = createdIds.map(cid => {
+          const c = cocktails.find(c => String(c.id) === String(cid));
+          return c ? `<div class="p-3 bg-gray-100 rounded flex items-center gap-2"><i class='ri-cup-line text-indigo-500'></i> <span>${c.name}</span></div>` : '';
+        }).join('');
+      } else {
+        document.getElementById('userCocktails').innerHTML = '<p class="text-gray-400">Aucun cocktail créé.</p>';
+      }
 
       // Favoris
-      if (favorites.length) {
-        document.getElementById('userFavorites').innerHTML = favorites.map(fid => {
-          const c = cocktails.find(c => c.id === fid.cocktail_id);
+      if (favIds.length) {
+        document.getElementById('userFavorites').innerHTML = favIds.map(fid => {
+          const c = cocktails.find(c => String(c.id) === String(fid));
           return c ? `<div class="p-3 bg-pink-50 rounded flex items-center gap-2"><i class='ri-heart-fill text-pink-500'></i> <span>${c.name}</span></div>` : '';
         }).join('');
       } else {
@@ -87,10 +95,11 @@
       }
 
       // Ratings
-      if (ratings.length) {
-        document.getElementById('userRatings').innerHTML = ratings.map(r => {
-          const c = cocktails.find(c => c.id === r.cocktail_id);
-          return c ? `<div class="p-3 bg-yellow-50 rounded flex items-center gap-2"><i class='ri-star-fill text-yellow-400'></i> <span>${c.name}</span> <span class='ml-2'>${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</span></div>` : '';
+      const ratingEntries = Object.entries(ratings);
+      if (ratingEntries.length) {
+        document.getElementById('userRatings').innerHTML = ratingEntries.map(([cid, rate]) => {
+          const c = cocktails.find(c => String(c.id) === String(cid));
+          return c ? `<div class="p-3 bg-yellow-50 rounded flex items-center gap-2"><i class='ri-star-fill text-yellow-400'></i> <span>${c.name}</span> <span class='ml-2'>${'★'.repeat(rate)}${'☆'.repeat(5 - rate)}</span></div>` : '';
         }).join('');
       } else {
         document.getElementById('userRatings').innerHTML = '<p class="text-gray-400">Aucune note donnée.</p>';

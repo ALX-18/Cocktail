@@ -1,58 +1,46 @@
 // public/favoritesAndRatings.js
 // Gestion des favoris et des ratings côté API (liés à l'utilisateur)
 
-// Utilise la variable API_BASE_URL déjà présente dans app.js
+// Nouveau système de like/favoris :
+// Utilise localStorage pour stocker les favoris côté client (pas de crash DB, instantané)
+// Les favoris sont persistants par navigateur/utilisateur
 
-function getCurrentUser() {
-  return JSON.parse(localStorage.getItem('currentUser'));
+function getLocalFavorites() {
+  return JSON.parse(localStorage.getItem('favorites') || '[]');
+}
+function setLocalFavorites(favs) {
+  localStorage.setItem('favorites', JSON.stringify(favs));
+}
+function isLocalFavorite(id) {
+  return getLocalFavorites().includes(id);
+}
+function toggleLocalFavorite(id) {
+  let favs = getLocalFavorites();
+  if (favs.includes(id)) {
+    favs = favs.filter(f => f !== id);
+  } else {
+    favs.push(id);
+  }
+  setLocalFavorites(favs);
 }
 
-// Favoris
-async function isFavoriteAPI(cocktailId) {
-  const user = getCurrentUser();
-  if (!user) return false;
-  const res = await fetch(`${API_BASE_URL}/favorites?user_id=${user.id}`);
-  const favs = await res.json();
-  return favs.some(f => String(f.cocktail_id) === String(cocktailId));
-}
 
-async function addFavoriteAPI(cocktailId) {
-  const user = getCurrentUser();
-  if (!user) return;
-  await fetch(`${API_BASE_URL}/favorites`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ user_id: user.id, cocktail_id: cocktailId })
-  });
+// Ratings (localStorage)
+function getLocalRatings() {
+  return JSON.parse(localStorage.getItem('ratings') || '{}');
 }
-
-async function removeFavoriteAPI(cocktailId) {
-  const user = getCurrentUser();
-  if (!user) return;
-  await fetch(`${API_BASE_URL}/favorites?user_id=${user.id}&cocktail_id=${cocktailId}`, {
-    method: 'DELETE'
-  });
+function setLocalRatings(ratings) {
+  localStorage.setItem('ratings', JSON.stringify(ratings));
 }
-
-// Ratings
-async function getUserRating(cocktailId) {
-  const user = getCurrentUser();
-  if (!user) return 0;
-  const res = await fetch(`${API_BASE_URL}/ratings?user_id=${user.id}`);
-  const ratings = await res.json();
-  const found = ratings.find(r => r.cocktail_id == cocktailId);
-  return found ? found.rating : 0;
+function getUserRating(cocktailId) {
+  const ratings = getLocalRatings();
+  return ratings[cocktailId] || 0;
 }
-
-async function setUserRating(cocktailId, rating, ratingEl) {
-  const user = getCurrentUser();
-  if (!user) return;
-  await fetch(`${API_BASE_URL}/ratings`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ user_id: user.id, cocktail_id: cocktailId, rating })
-  });
-  // Mettre à jour l'affichage des étoiles
+function setUserRating(cocktailId, rating, ratingEl) {
+  const ratings = getLocalRatings();
+  ratings[cocktailId] = rating;
+  setLocalRatings(ratings);
+  // Met à jour l'affichage des étoiles
   const stars = ratingEl.querySelectorAll('i');
   stars.forEach((star, idx) => {
     if (idx < rating) {
@@ -66,11 +54,12 @@ async function setUserRating(cocktailId, rating, ratingEl) {
 }
 
 // Initialisation dynamique des boutons favoris et ratings
-window.initFavoritesAndRatings = async function() {
-  document.querySelectorAll('.favorite-btn').forEach(async btn => {
+window.initFavoritesAndRatings = function() {
+  // Favoris (localStorage)
+  document.querySelectorAll('.favorite-btn').forEach(btn => {
     const id = btn.dataset.id;
     const icon = btn.querySelector('i');
-    if (await isFavoriteAPI(id)) {
+    if (isLocalFavorite(id)) {
       icon.classList.remove('ri-heart-line');
       icon.classList.add('ri-heart-fill');
       btn.classList.add('pulse-animation');
@@ -79,12 +68,16 @@ window.initFavoritesAndRatings = async function() {
       icon.classList.add('ri-heart-line');
       btn.classList.remove('pulse-animation');
     }
-    btn.onclick = () => toggleFavoriteAPI(id, btn);
+    btn.onclick = () => {
+      toggleLocalFavorite(id);
+      window.initFavoritesAndRatings();
+    };
   });
 
-  document.querySelectorAll('.rating').forEach(async ratingEl => {
+  // Ratings (localStorage)
+  document.querySelectorAll('.rating').forEach(ratingEl => {
     const id = ratingEl.dataset.id;
-    const userRating = await getUserRating(id);
+    const userRating = getUserRating(id);
     const stars = ratingEl.querySelectorAll('i');
     stars.forEach((star, idx) => {
       if (idx < userRating) {
@@ -94,7 +87,10 @@ window.initFavoritesAndRatings = async function() {
         star.classList.remove('ri-star-fill');
         star.classList.add('ri-star-line');
       }
-      star.onclick = () => setUserRating(id, idx + 1, ratingEl);
+      star.onclick = () => {
+        setUserRating(id, idx + 1, ratingEl);
+        window.initFavoritesAndRatings();
+      };
     });
   });
 };
