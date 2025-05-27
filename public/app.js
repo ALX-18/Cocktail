@@ -2,7 +2,73 @@
 const API_BASE_URL = "" // pour utiliser le backend local
 const USE_MOCK_API = false
 
+const API_BASE_URL = "https://api.example.com" 
+const USE_MOCK_API = true 
 
+
+// Liste des ingrédients (à charger depuis le fichier ou à définir ici)
+const INGREDIENTS_LIST = [
+  "Vodka", "Rhum blanc", "Rhum ambré", "Gin", "Tequila", "Whisky", "Bourbon", "Cognac", "Cachaça", "Vermouth blanc", "Vermouth rouge", "Triple sec", "Cointreau", "Grand Marnier", "Amaretto", "Liqueur de café", "Liqueur de cerise", "Liqueur de noisette", "Liqueur de menthe", "Liqueur de cassis", "Jus d'orange", "Jus de citron", "Jus de citron vert", "Jus d'ananas", "Jus de pamplemousse", "Jus de pomme", "Jus de cranberry", "Jus de mangue", "Jus de tomate", "Soda au gingembre", "Eau gazeuse", "Tonic", "Cola", "Limonade", "Sirop de sucre de canne", "Sirop d'érable", "Sirop de grenadine", "Sirop de menthe", "Sirop d'orgeat", "Sirop de coco", "Sirop de fraise", "Sirop de vanille", "Sirop de caramel", "Sirop de fruit de la passion", "Citron", "Citron vert", "Orange", "Ananas", "Cerise", "Fraise", "Framboise", "Mûre", "Menthe fraîche", "Basilic", "Concombre", "Olive", "Cannelle", "Noix de muscade", "Sel", "Sucre", "Glaçons"
+];
+
+// Liste des liquides (pour la gestion des unités)
+const LIQUID_INGREDIENTS = [
+  "Vodka", "Rhum blanc", "Rhum ambré", "Gin", "Tequila", "Whisky", "Bourbon", "Cognac", "Cachaça", "Vermouth blanc", "Vermouth rouge", "Triple sec", "Cointreau", "Grand Marnier", "Amaretto", "Liqueur de café", "Liqueur de cerise", "Liqueur de noisette", "Liqueur de menthe", "Liqueur de cassis", "Jus d'orange", "Jus de citron", "Jus de citron vert", "Jus d'ananas", "Jus de pamplemousse", "Jus de pomme", "Jus de cranberry", "Jus de mangue", "Jus de tomate", "Soda au gingembre", "Eau gazeuse", "Tonic", "Cola", "Limonade", "Sirop de sucre de canne", "Sirop d'érable", "Sirop de grenadine", "Sirop de menthe", "Sirop d'orgeat", "Sirop de coco", "Sirop de fraise", "Sirop de vanille", "Sirop de caramel", "Sirop de fruit de la passion"
+];
+
+// Initialisation du menu déroulant d'ingrédients
+function createIngredientRow(selected = "", quantity = "") {
+  const row = document.createElement("div");
+  row.className = "flex items-center gap-2 mb-2";
+
+  // Select
+  const select = document.createElement("select");
+  select.className = "ingredient-select border rounded p-2 flex-1";
+  select.innerHTML = `<option value="">Choisir un ingrédient</option>` + INGREDIENTS_LIST.map(ing => `<option value="${ing}" ${ing === selected ? "selected" : ""}>${ing}</option>`).join("");
+
+  // Input quantité
+  const input = document.createElement("input");
+  input.type = "number";
+  input.min = "0";
+  input.step = "any";
+  input.className = "ingredient-qty border rounded p-2 w-24";
+  input.placeholder = "Quantité";
+  if (quantity) input.value = quantity;
+
+  // Unité
+  const unit = document.createElement("span");
+  unit.className = "ingredient-unit text-gray-500";
+  unit.textContent = "";
+
+  // Gestion dynamique de l'unité
+  select.addEventListener("change", () => {
+    if (LIQUID_INGREDIENTS.includes(select.value)) {
+      unit.textContent = "ml";
+    } else if (select.value) {
+      unit.textContent = "g";
+    } else {
+      unit.textContent = "";
+    }
+  });
+  // Initialiser l'unité si déjà sélectionné
+  if (selected) {
+    if (LIQUID_INGREDIENTS.includes(selected)) unit.textContent = "ml";
+    else unit.textContent = "g";
+  }
+
+  // Bouton supprimer
+  const removeBtn = document.createElement("button");
+  removeBtn.type = "button";
+  removeBtn.className = "text-red-500 hover:text-red-700 ml-2";
+  removeBtn.innerHTML = '<i class="ri-close-line"></i>';
+  removeBtn.onclick = () => row.remove();
+
+  row.appendChild(select);
+  row.appendChild(input);
+  row.appendChild(unit);
+  row.appendChild(removeBtn);
+  return row;
+}
 
 document.addEventListener("DOMContentLoaded", () => {
   if (
@@ -27,6 +93,25 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Gestionnaire pour l'auto-expansion de la barre de recherche
   setupSearchInputExpansion()
+
+  // Barre de recherche dynamique : recherche à chaque frappe
+  const searchInput = document.getElementById("searchInput")
+  if (searchInput) {
+    let searchTimeout = null;
+    searchInput.addEventListener("input", (e) => {
+      clearTimeout(searchTimeout)
+      searchTimeout = setTimeout(() => {
+        fetchCocktails(e.target.value)
+      }, 250) // délai pour éviter trop d'appels
+    })
+  }
+
+  const ingredientsContainer = document.getElementById("ingredientsContainer");
+  document.getElementById("addIngredientBtn").addEventListener("click", () => {
+    ingredientsContainer.appendChild(createIngredientRow());
+  });
+  // Ajouter une ligne par défaut
+  ingredientsContainer.appendChild(createIngredientRow());
 })
 
 // Configuration de l'auto-expansion de la barre de recherche
@@ -174,22 +259,66 @@ async function fetchCocktails(search = "") {
       const cocktailElement = document.createElement("div")
       cocktailElement.className = "cocktail-card bg-white rounded-lg shadow-md p-4 border border-gray-200 hover:shadow-lg"
       cocktailElement.innerHTML = `
-        <h3 class="text-lg font-semibold mb-2">${cocktail.name}</h3>
-        <p class="text-gray-600 mb-3">${cocktail.description || "Aucune description disponible."}</p>
-        <div class="mb-2">
-          <h4 class="font-medium text-slate-700">Ingrédients:</h4>
-          <p>${cocktail.ingredients ? cocktail.ingredients.join(", ") : "N/A"}</p>
+    <div class="relative h-48 overflow-hidden">
+        <img src="${cocktailImage}" alt="${cocktail.name}" class="w-full h-full object-cover cocktail-image">
+        <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end">
+            <div class="p-4 text-white">
+                <h4 class="font-semibold">${cocktail.name}</h4>
+            </div>
         </div>
-        ${
-          cocktail.instructions
-              ? `
-          <div>
-            <h4 class="font-medium text-slate-700">Instructions:</h4>
+    </div>
+    <div class="p-5">
+        <h3 class="text-xl font-semibold mb-2">${cocktail.name}</h3>
+        <p class="text-gray-600 mb-4">${cocktail.description || "Aucune description disponible."}</p>
+        <div class="mb-3">
+            <h4 class="font-medium text-gray-700 mb-2 flex items-center gap-1">
+                <i class="ri-flask-line"></i>
+                <span>Ingrédients</span>
+            </h4>
+            ${formatIngredients(cocktail.ingredients)}
+        </div>
+        ${cocktail.instructions ? `
+        <div>
+            <h4 class="font-medium text-gray-700 mb-2 flex items-center gap-1">
+                <i class="ri-file-list-line"></i>
+                <span>Instructions</span>
+            </h4>
             <p class="text-gray-600">${cocktail.instructions}</p>
-          </div>`
-              : ""
-      }
-      `
+        </div>
+        ` : ""}
+        <div class="mt-5 pt-4 border-t border-gray-100 flex flex-col gap-2 md:flex-row md:justify-between items-center">
+            <div class="flex items-center gap-3">
+                <!-- Notation étoiles -->
+                <span class="flex items-center rating" data-id="${cocktail.id}">
+                    <i class="ri-star-line text-yellow-400 text-xl cursor-pointer" data-rate="1"></i>
+                    <i class="ri-star-line text-yellow-400 text-xl cursor-pointer" data-rate="2"></i>
+                    <i class="ri-star-line text-yellow-400 text-xl cursor-pointer" data-rate="3"></i>
+                    <i class="ri-star-line text-yellow-400 text-xl cursor-pointer" data-rate="4"></i>
+                    <i class="ri-star-line text-yellow-400 text-xl cursor-pointer" data-rate="5"></i>
+                </span>
+                <!-- Favoris -->
+                <button class="favorite-btn text-pink-500 hover:text-pink-700 text-xl transition" data-id="${cocktail.id}">
+                    <i class="ri-heart-line"></i>
+                </button>
+                <!-- Partage -->
+                <button class="share-btn text-indigo-500 hover:text-indigo-700 text-xl transition" data-id="${cocktail.id}" title="Partager">
+                    <i class="ri-share-line"></i>
+                </button>
+            </div>
+            <div class="flex gap-2 mt-2 md:mt-0">
+                <button class="text-indigo-600 hover:text-indigo-800 transition flex items-center gap-1" onclick="editCocktail('${cocktail.id}')">
+                    <i class="ri-edit-line"></i>
+                    <span>Modifier</span>
+                </button>
+                <button class="text-red-500 hover:text-red-700 transition flex items-center gap-1" onclick="deleteCocktail('${cocktail.id}')">
+                    <i class="ri-delete-bin-line"></i>
+                    <span>Supprimer</span>
+                </button>
+            </div>
+        </div>
+    </div>
+`;
+      // Ajout de l'élément à la liste
       cocktailList.appendChild(cocktailElement)
     })
   } catch (error) {
@@ -345,10 +474,13 @@ document.getElementById("addCocktailForm").addEventListener("submit", async (e) 
 
   const name = document.getElementById("name").value
   const description = document.getElementById("description").value
-  const ingredients = document
-    .getElementById("ingredients")
-    .value.split(",")
-    .map((i) => i.trim())
+  const ingredientRows = document.querySelectorAll("#ingredientsContainer > div");
+  const ingredients = Array.from(ingredientRows).map(row => {
+    const select = row.querySelector("select");
+    const qty = row.querySelector("input");
+    const unit = row.querySelector(".ingredient-unit");
+    return select.value && qty.value ? `${qty.value}${unit.textContent} ${select.value}` : null;
+  }).filter(Boolean);
   const instructions = document.getElementById("instructions").value
 
   try {
@@ -424,41 +556,42 @@ function showNotification(message, type = "success") {
     notification.style.transform = "translateX(100%)"
   }, 3000)
 }
-document.getElementById("addCocktailForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
 
-  const name = document.getElementById("name").value.trim();
-  const description = document.getElementById("description").value.trim();
-  const ingredients = document
-      .getElementById("ingredients")
-      .value.split(",")
-      .map(i => i.trim())
-      .filter(i => i.length > 0);
-  const instructions = document.getElementById("instructions").value.trim();
-
-  if (!name || ingredients.length === 0 || !instructions) {
-    alert("Merci de remplir le nom, les ingrédients et les instructions.");
-    return;
-  }
-
-  try {
-    const response = await fetch("/api/cocktails", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, description, ingredients, instructions }),
+// Après le forEach, ajouter la gestion des interactions : notation, favoris, partage
+setTimeout(() => { // S'assurer que le DOM est prêt
+  document.querySelectorAll('.rating').forEach(ratingEl => {
+    ratingEl.addEventListener('click', function(e) {
+      if (e.target.dataset.rate) {
+        const rate = parseInt(e.target.dataset.rate);
+        const stars = this.querySelectorAll('i');
+        stars.forEach((star, idx) => {
+          if (idx < rate) {
+            star.classList.remove('ri-star-line');
+            star.classList.add('ri-star-fill');
+          } else {
+            star.classList.remove('ri-star-fill');
+            star.classList.add('ri-star-line');
+          }
+        });
+        // Ici tu peux sauvegarder la note côté client ou API
+      }
     });
+  });
+  document.querySelectorAll('.favorite-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      this.classList.toggle('pulse-animation');
+      const icon = this.querySelector('i');
+      icon.classList.toggle('ri-heart-line');
+      icon.classList.toggle('ri-heart-fill');
+      // Ici tu peux sauvegarder le favori côté client ou API
+    });
+  });
+  document.querySelectorAll('.share-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const url = window.location.href.split('#')[0] + '#cocktail-' + btn.dataset.id;
+      navigator.clipboard.writeText(url);
+      showNotification('Lien du cocktail copié !');
+    });
+  });
+}, 0);
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || "Erreur inconnue lors de l'ajout");
-    }
-
-    document.getElementById("addCocktailForm").reset();
-    alert("Cocktail ajouté avec succès !");
-    fetchCocktails(); // Recharge la liste des cocktails affichés
-
-  } catch (error) {
-    console.error("Erreur lors de l'ajout du cocktail :", error);
-    alert("Erreur lors de l'ajout du cocktail : " + error.message);
-  }
-});

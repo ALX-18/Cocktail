@@ -23,6 +23,9 @@
             <h1 class="text-4xl md:text-5xl font-bold font-display mb-4 tracking-tight">Cocktail Manager</h1>
             <p class="text-xl md:text-2xl opacity-90 max-w-2xl mx-auto leading-relaxed">Découvrez, créez et partagez vos recettes de cocktails préférées</p>
         </div>
+        <div class="absolute top-4 right-4 z-20">
+            <button id="mainProfileBtn" class="px-5 py-2 bg-white/80 text-indigo-700 rounded-lg shadow hover:bg-white font-semibold transition"></button>
+        </div>
     </header>
 
     <!-- Contenu principal -->
@@ -69,8 +72,8 @@
                         </div>
                         <div>
                             <label for="ingredients" class="block text-sm font-medium text-gray-700 mb-1">Ingrédients</label>
-                            <input type="text" id="ingredients" required placeholder="Séparés par une virgule"
-                                   class="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 transition-all" />
+                            <div id="ingredientsContainer"></div>
+                            <button type="button" id="addIngredientBtn" class="mt-2 px-3 py-1 bg-indigo-500 text-white rounded hover:bg-indigo-600 transition">Ajouter un ingrédient</button>
                         </div>
                         <div>
                             <label for="instructions" class="block text-sm font-medium text-gray-700 mb-1">Instructions</label>
@@ -185,5 +188,19 @@
 
     <script src="tailwind.config.js"></script>
     <script src="app.js"></script>
+    <script>
+    // Gestion du bouton connexion/profil
+    (function() {
+      const btn = document.getElementById('mainProfileBtn');
+      const user = localStorage.getItem('currentUser');
+      if (user) {
+        btn.textContent = 'Profil';
+        btn.onclick = () => window.location.href = '/profil.html';
+      } else {
+        btn.textContent = 'Se connecter';
+        btn.onclick = () => window.location.href = '/login/login.html';
+      }
+    })();
+    </script>
 </body>
 </html>

@@ -3,11 +3,32 @@ const { Pool } = require('pg');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const bcrypt = require('bcrypt');
 require('dotenv').config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Servir le dossier 'register' sous l'URL '/register'
+app.use('/register', express.static(path.join(__dirname, 'public', 'register')));
+
+// Servir le dossier 'login' sous l'URL '/login'
+app.use('/login', express.static(path.join(__dirname, 'public', 'login')));
+
+// (Optionnel) Route pour accéder explicitement à la page principale de register (ex: register.html)
+app.get('/register', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'register', 'register.html'));
+});
+
+// (Optionnel) Route pour accéder explicitement à la page principale de login (ex: login.html)
+app.get('/login', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'login', 'login.html'));
+});
+
+
 
 // Vérifier si DATABASE_URL est bien défini
 if (!process.env.DATABASE_URL) {
@@ -160,6 +181,45 @@ app.get('/api/ingredients', async (req, res) => {
     }
 });
 
+// Register
+app.post('/api/users/register', async (req, res) => {
+  const { email, username, password, urlavatar } = req.body;
+  if (!email || !username || !password) return res.status(400).json({ error: 'Champs requis manquants.' });
+  try {
+    const userExists = await pool.query('SELECT 1 FROM users WHERE email = $1 OR username = $2', [email, username]);
+    if (userExists.rowCount > 0) return res.status(409).json({ error: "Email ou nom d'utilisateur déjà utilisé." });
+    const hash = await bcrypt.hash(password, 10);
+    const result = await pool.query(
+      'INSERT INTO users (email, username, password, urlavatar) VALUES ($1, $2, $3, $4) RETURNING id, email, username, urlavatar',
+      [email, username, hash, urlavatar || null]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur.' });
+  }
+});
+
+// Login
+app.post('/api/users/login', async (req, res) => {
+  const { mailOrUsername, password } = req.body;
+  if (!mailOrUsername || !password) return res.status(400).json({ error: 'Champs requis manquants.' });
+  try {
+    const userRes = await pool.query(
+      'SELECT * FROM users WHERE email = $1 OR username = $1',
+      [mailOrUsername]
+    );
+    if (userRes.rowCount === 0) return res.status(401).json({ error: 'Identifiants invalides.' });
+    const user = userRes.rows[0];
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) return res.status(401).json({ error: 'Identifiants invalides.' });
+    // Ne pas renvoyer le hash !
+    const { id, email, username, urlavatar } = user;
+    res.json({ id, email, username, urlavatar });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur.' });
+  }
+});
+
 // 🔹 Lancer le serveur avec gestion du port dynamique
 const PORT = process.env.PORT || 3000;
 const server = app.listen(PORT, () => {
@@ -175,3 +235,4 @@ const server = app.listen(PORT, () => {
         console.error("❌ Erreur lors du démarrage du serveur :", err);
     }
 });
+
