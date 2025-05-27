@@ -78,51 +78,52 @@ const initDb = async () => {
         client.release();
 
         // Insérer les ingrédients après la création des tables
-        await insertIngredients();
+        await insertIngredientsToTable('solid_ingredient', 'solid_ingredients.txt');
+        await insertIngredientsToTable('liquid_ingredient', 'liquid_ingredients.txt');
+
     } catch (error) {
         console.error("❌ Erreur lors de l'initialisation de la base de données :", error.message);
     }
 };
 
 // 🔹 Insérer les ingrédients depuis le fichier texte
-const insertIngredients = async () => {
+const insertIngredientsToTable = async (tableName, fileName) => {
     try {
-        const filePath = path.join(__dirname, 'ingredients_cocktail.txt');
+        const filePath = path.join(__dirname, fileName);
         if (!fs.existsSync(filePath)) {
-            console.error("❌ Fichier des ingrédients introuvable :", filePath);
+            console.error(`❌ Fichier des ingrédients introuvable : ${filePath}`);
             return;
         }
 
-        console.log("📂 Fichier des ingrédients trouvé :", filePath);
+        console.log(`📂 Fichier des ingrédients trouvé : ${filePath}`);
 
         const data = fs.readFileSync(filePath, 'utf-8');
 
-        // Extraction des ingrédients (on enlève les catégories et les tirets)
+        // Extraction des ingrédients (sans catégories ni tirets)
         const ingredients = data
             .split('\n')
             .map(line => line.trim())
             .filter(line => line && !line.includes(':') && !line.startsWith('-'))
             .map(ing => ing.replace(/^- /, ''));
 
-
         if (ingredients.length === 0) {
             console.error("⚠️ Aucun ingrédient extrait. Vérifiez le format du fichier.");
             return;
         }
 
-        // Insertion dans PostgreSQL (en évitant les doublons)
         for (let ing of ingredients) {
             await pool.query(
-                'INSERT INTO ingredients (name) VALUES ($1) ON CONFLICT (name) DO NOTHING',
+                `INSERT INTO ${tableName} (name) VALUES ($1) ON CONFLICT (name) DO NOTHING`,
                 [ing]
             );
         }
 
-        console.log("✅ Ingrédients insérés avec succès !");
+        console.log(`✅ Ingrédients insérés dans la table ${tableName} avec succès !`);
     } catch (error) {
-        console.error("❌ Erreur lors de l'insertion des ingrédients :", error.message);
+        console.error(`❌ Erreur lors de l'insertion dans la table ${tableName} :`, error.message);
     }
 };
+
 
 initDb();
 
@@ -171,12 +172,24 @@ app.post('/api/cocktails', async (req, res) => {
     }
 });
 // Endpoint API : Récupérer tous les ingrédients
-app.get('/api/ingredients', async (req, res) => {
+// Route pour récupérer les ingrédients solides
+app.get('/api/solid_ingredients', async (req, res) => {
     try {
-        const result = await pool.query('SELECT name FROM ingredients ORDER BY name ASC');
+        const result = await pool.query('SELECT name FROM solid_ingredient ORDER BY name ASC');
         res.json(result.rows.map(row => row.name));
     } catch (error) {
-        console.error("❌ Erreur GET /api/ingredients :", error.message);
+        console.error("❌ Erreur GET /api/solid_ingredients :", error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Route pour récupérer les ingrédients liquides
+app.get('/api/liquid_ingredients', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT name FROM liquid_ingredient ORDER BY name ASC');
+        res.json(result.rows.map(row => row.name));
+    } catch (error) {
+        console.error("❌ Erreur GET /api/liquid_ingredients :", error.message);
         res.status(500).json({ error: error.message });
     }
 });

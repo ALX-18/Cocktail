@@ -13,14 +13,16 @@ const LIQUID_INGREDIENTS = [
 ];
 
 // Initialisation du menu déroulant d'ingrédients
-function createIngredientRow(selected = "", quantity = "") {
+function createIngredientRow(ingredientsList, liquidIngredients, selected = "", quantity = "") {
   const row = document.createElement("div");
   row.className = "flex items-center gap-2 mb-2";
 
   // Select
   const select = document.createElement("select");
   select.className = "ingredient-select border rounded p-2 flex-1";
-  select.innerHTML = `<option value="">Choisir un ingrédient</option>` + INGREDIENTS_LIST.map(ing => `<option value="${ing}" ${ing === selected ? "selected" : ""}>${ing}</option>`).join("");
+
+  select.innerHTML = `<option value="">Choisir un ingrédient</option>` +
+      ingredientsList.map(ing => `<option value="${ing}" ${ing === selected ? "selected" : ""}>${ing}</option>`).join("");
 
   // Input quantité
   const input = document.createElement("input");
@@ -38,7 +40,7 @@ function createIngredientRow(selected = "", quantity = "") {
 
   // Gestion dynamique de l'unité
   select.addEventListener("change", () => {
-    if (LIQUID_INGREDIENTS.includes(select.value)) {
+    if (liquidIngredients.includes(select.value)) {
       unit.textContent = "ml";
     } else if (select.value) {
       unit.textContent = "g";
@@ -46,9 +48,10 @@ function createIngredientRow(selected = "", quantity = "") {
       unit.textContent = "";
     }
   });
+
   // Initialiser l'unité si déjà sélectionné
   if (selected) {
-    if (LIQUID_INGREDIENTS.includes(selected)) unit.textContent = "ml";
+    if (liquidIngredients.includes(selected)) unit.textContent = "ml";
     else unit.textContent = "g";
   }
 
@@ -66,10 +69,11 @@ function createIngredientRow(selected = "", quantity = "") {
   return row;
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+
+document.addEventListener("DOMContentLoaded", async () => {
   if (
-    localStorage.getItem("darkMode") === "true" ||
-    (window.matchMedia("(prefers-color-scheme: dark)").matches && !localStorage.getItem("darkMode"))
+      localStorage.getItem("darkMode") === "true" ||
+      (window.matchMedia("(prefers-color-scheme: dark)").matches && !localStorage.getItem("darkMode"))
   ) {
     document.documentElement.classList.add("dark")
     updateDarkModeIcon(true)
@@ -86,6 +90,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Gestionnaire de tri
   document.getElementById("sortButton").addEventListener("click", toggleSort)
+
+
+  //Const solid et liquide ingredient
+
+
+  const {solidIngredients, liquidIngredients} = await fetchIngredients();
+
+  // Combiner les ingrédients (solides + liquides)
+  const allIngredients = [...new Set([...liquidIngredients, ...solidIngredients])].sort();
+
+
 
   // Gestionnaire pour l'auto-expansion de la barre de recherche
   setupSearchInputExpansion()
@@ -104,10 +119,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const ingredientsContainer = document.getElementById("ingredientsContainer");
   document.getElementById("addIngredientBtn").addEventListener("click", () => {
-    ingredientsContainer.appendChild(createIngredientRow());
+    ingredientsContainer.appendChild(createIngredientRow(allIngredients, liquidIngredients));
   });
+
   // Ajouter une ligne par défaut
-  ingredientsContainer.appendChild(createIngredientRow());
+  ingredientsContainer.appendChild(createIngredientRow(allIngredients, liquidIngredients));
 })
 
 // Configuration de l'auto-expansion de la barre de recherche
@@ -210,6 +226,26 @@ function formatIngredients(ingredients) {
             ${ingredients.map((ing) => `<li>${ing}</li>`).join("")}
         </ul>
     `
+}
+async function fetchIngredients() {
+  try {
+    const [solidResponse, liquidResponse] = await Promise.all([
+      fetch(`${API_BASE_URL}/solid_ingredients`),
+      fetch(`${API_BASE_URL}/liquid_ingredients`),
+    ]);
+
+    if (!solidResponse.ok || !liquidResponse.ok) {
+      throw new Error('Erreur lors du chargement des ingrédients');
+    }
+
+    const solidIngredients = await solidResponse.json();
+    const liquidIngredients = await liquidResponse.json();
+
+    return { solidIngredients, liquidIngredients };
+  } catch (error) {
+    console.error(error);
+    return { solidIngredients: [], liquidIngredients: [] };
+  }
 }
 
 // Fonction pour récupérer les cocktails depuis l'API
