@@ -1,4 +1,5 @@
 const API_BASE_URL = "https://cocktail-dry-pond-6336.fly.dev/api";
+
 const USE_MOCK_API = false;
 
 // Liste des ingrédients (à charger depuis le fichier ou à définir ici)
