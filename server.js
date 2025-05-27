@@ -14,8 +14,6 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Servir le dossier 'register' sous l'URL '/register'
-app.use('/register', express.static(path.join(__dirname, 'public', 'register')));
 
 // Servir le dossier 'login' sous l'URL '/login'
 app.use('/login', express.static(path.join(__dirname, 'public', 'login')));
