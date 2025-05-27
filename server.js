@@ -18,13 +18,14 @@ if (!process.env.DATABASE_URL) {
 // 🔹 Configuration de la connexion PostgreSQL
 const pool = new Pool({
     connectionString: process.env.SUPABASE_DB_URL,
-    ssl: {
-        rejectUnauthorized: false
-    }
+  ssl: {
+    require: true,
+    rejectUnauthorized: false
+  }
 });
 
 
-// 🔹 Test de connexion PostgreSQL
+// 🔹 Test de connexion PostgreSQLs
 pool.connect()
     .then(() => console.log("✅ Connecté à PostgreSQL"))
     .catch(err => {
