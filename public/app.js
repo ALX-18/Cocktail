@@ -1,5 +1,5 @@
-const API_BASE_URL = "https://api.example.com" 
-const USE_MOCK_API = true 
+const API_BASE_URL = "http://localhost:3000/api";
+const USE_MOCK_API = false;
 
 
 // Liste des ingrédients (à charger depuis le fichier ou à définir ici)
@@ -215,215 +215,103 @@ function formatIngredients(ingredients) {
 // Fonction pour récupérer les cocktails depuis l'API
 async function fetchCocktails(search = "") {
   try {
-    let cocktails = []
-
-    if (USE_MOCK_API) {
-      // Simulation d'API avec Firebase Realtime Database
-      // En production, remplacez ceci par un appel à votre API réelle
-      const response = await fetch("https://cocktail-manager-demo-default-rtdb.firebaseio.com/cocktails.json")
-
-      if (!response.ok) {
-        // Si la base de données n'existe pas encore ou est vide, utiliser des données par défaut
-        cocktails = getDefaultCocktails()
-      } else {
-        const data = await response.json()
-        // Convertir l'objet en tableau (format Firebase)
-        cocktails = data
-          ? Object.keys(data).map((key) => ({
-              id: key,
-              ...data[key],
-            }))
-          : []
-
-        // Si aucun cocktail n'est trouvé, utiliser les données par défaut
-        if (cocktails.length === 0) {
-          cocktails = getDefaultCocktails()
-          // Sauvegarder les cocktails par défaut dans Firebase
-          await saveCocktailsToAPI(cocktails)
-        }
-      }
-    } else {
-      // Appel à une vraie API
-      const response = await fetch(`${API_BASE_URL}/cocktails${search ? `?search=${search}` : ""}`)
-      if (!response.ok) throw new Error("Erreur lors de la récupération des cocktails")
-      cocktails = await response.json()
-    }
-
-    // Filtrer si nécessaire
-    if (search) {
-      const searchLower = search.toLowerCase()
-      cocktails = cocktails.filter(
-        (cocktail) =>
-          cocktail.name.toLowerCase().includes(searchLower) ||
-          (cocktail.description && cocktail.description.toLowerCase().includes(searchLower)) ||
-          (cocktail.ingredients && cocktail.ingredients.some((ing) => ing.toLowerCase().includes(searchLower))),
-      )
-    }
+    let cocktails = [];
+    // Appel à la vraie API
+    const response = await fetch(`${API_BASE_URL}/cocktails${search ? `?search=${encodeURIComponent(search)}` : ""}`);
+    if (!response.ok) throw new Error("Erreur lors de la récupération des cocktails");
+    cocktails = await response.json();
 
     // Trier les cocktails
     cocktails.sort((a, b) => {
       if (currentSort === "asc") {
-        return a.name.localeCompare(b.name)
+        return a.name.localeCompare(b.name);
       } else {
-        return b.name.localeCompare(a.name)
+        return b.name.localeCompare(a.name);
       }
-    })
+    });
 
-    const cocktailList = document.getElementById("cocktailList")
-    cocktailList.innerHTML = "" // Vider la liste avant de la remplir
+    const cocktailList = document.getElementById("cocktailList");
+    cocktailList.innerHTML = "";
 
     if (cocktails.length === 0) {
       cocktailList.innerHTML = `
-                <div class="col-span-full flex flex-col items-center justify-center py-10 text-center">
-                    <i class="ri-search-2-line text-5xl text-gray-400 mb-4"></i>
-                    <p class="text-xl text-gray-500">Aucun cocktail trouvé</p>
-                    <p class="text-gray-400 mt-2">Essayez d'autres termes de recherche ou ajoutez un nouveau cocktail.</p>
-                </div>
-            `
-      return
+        <div class="col-span-full flex flex-col items-center justify-center py-10 text-center">
+          <i class="ri-search-2-line text-5xl text-gray-400 mb-4"></i>
+          <p class="text-xl text-gray-500">Aucun cocktail trouvé</p>
+          <p class="text-gray-400 mt-2">Essayez d'autres termes de recherche ou ajoutez un nouveau cocktail.</p>
+        </div>
+      `;
+      return;
     }
 
     cocktails.forEach((cocktail) => {
-      const cocktailImage = getRandomCocktailImage()
-      const cocktailElement = document.createElement("div")
-      cocktailElement.className = "cocktail-card bg-white rounded-xl shadow-md overflow-hidden transition-all group"
+      const cocktailImage = getRandomCocktailImage();
+      const cocktailElement = document.createElement("div");
+      cocktailElement.className = "cocktail-card bg-white rounded-xl shadow-md overflow-hidden transition-all group";
       cocktailElement.innerHTML = `
-    <div class="relative h-48 overflow-hidden">
-        <img src="${cocktailImage}" alt="${cocktail.name}" class="w-full h-full object-cover cocktail-image">
-        <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end">
+        <div class="relative h-48 overflow-hidden">
+          <img src="${cocktailImage}" alt="${cocktail.name}" class="w-full h-full object-cover cocktail-image">
+          <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end">
             <div class="p-4 text-white">
-                <h4 class="font-semibold">${cocktail.name}</h4>
+              <h4 class="font-semibold">${cocktail.name}</h4>
             </div>
+          </div>
         </div>
-    </div>
-    <div class="p-5">
-        <h3 class="text-xl font-semibold mb-2">${cocktail.name}</h3>
-        <p class="text-gray-600 mb-4">${cocktail.description || "Aucune description disponible."}</p>
-        <div class="mb-3">
+        <div class="p-5">
+          <h3 class="text-xl font-semibold mb-2">${cocktail.name}</h3>
+          <p class="text-gray-600 mb-4">${cocktail.description || "Aucune description disponible."}</p>
+          <div class="mb-3">
             <h4 class="font-medium text-gray-700 mb-2 flex items-center gap-1">
-                <i class="ri-flask-line"></i>
-                <span>Ingrédients</span>
+              <i class="ri-flask-line"></i>
+              <span>Ingrédients</span>
             </h4>
             ${formatIngredients(cocktail.ingredients)}
-        </div>
-        ${cocktail.instructions ? `
-        <div>
+          </div>
+          ${cocktail.instructions ? `
+          <div>
             <h4 class="font-medium text-gray-700 mb-2 flex items-center gap-1">
-                <i class="ri-file-list-line"></i>
-                <span>Instructions</span>
+              <i class="ri-file-list-line"></i>
+              <span>Instructions</span>
             </h4>
             <p class="text-gray-600">${cocktail.instructions}</p>
-        </div>
-        ` : ""}
-        <div class="mt-5 pt-4 border-t border-gray-100 flex flex-col gap-2 md:flex-row md:justify-between items-center">
+          </div>
+          ` : ""}
+          <div class="mt-5 pt-4 border-t border-gray-100 flex flex-col gap-2 md:flex-row md:justify-between items-center">
             <div class="flex items-center gap-3">
-                <!-- Notation étoiles -->
-                <span class="flex items-center rating" data-id="${cocktail.id}">
-                    <i class="ri-star-line text-yellow-400 text-xl cursor-pointer" data-rate="1"></i>
-                    <i class="ri-star-line text-yellow-400 text-xl cursor-pointer" data-rate="2"></i>
-                    <i class="ri-star-line text-yellow-400 text-xl cursor-pointer" data-rate="3"></i>
-                    <i class="ri-star-line text-yellow-400 text-xl cursor-pointer" data-rate="4"></i>
-                    <i class="ri-star-line text-yellow-400 text-xl cursor-pointer" data-rate="5"></i>
-                </span>
-                <!-- Favoris -->
-                <button class="favorite-btn text-pink-500 hover:text-pink-700 text-xl transition" data-id="${cocktail.id}">
-                    <i class="ri-heart-line"></i>
-                </button>
-                <!-- Partage -->
-                <button class="share-btn text-indigo-500 hover:text-indigo-700 text-xl transition" data-id="${cocktail.id}" title="Partager">
-                    <i class="ri-share-line"></i>
-                </button>
+              <span class="flex items-center rating" data-id="${cocktail.id}">
+                <i class="ri-star-line text-yellow-400 text-xl cursor-pointer" data-rate="1"></i>
+                <i class="ri-star-line text-yellow-400 text-xl cursor-pointer" data-rate="2"></i>
+                <i class="ri-star-line text-yellow-400 text-xl cursor-pointer" data-rate="3"></i>
+                <i class="ri-star-line text-yellow-400 text-xl cursor-pointer" data-rate="4"></i>
+                <i class="ri-star-line text-yellow-400 text-xl cursor-pointer" data-rate="5"></i>
+              </span>
+              <button class="favorite-btn text-pink-500 hover:text-pink-700 text-xl transition" data-id="${cocktail.id}"><i class="ri-heart-line"></i></button>
+              <button class="share-btn text-indigo-500 hover:text-indigo-700 text-xl transition" data-id="${cocktail.id}" title="Partager"><i class="ri-share-line"></i></button>
             </div>
             <div class="flex gap-2 mt-2 md:mt-0">
-                <button class="text-indigo-600 hover:text-indigo-800 transition flex items-center gap-1" onclick="editCocktail('${cocktail.id}')">
-                    <i class="ri-edit-line"></i>
-                    <span>Modifier</span>
-                </button>
-                <button class="text-red-500 hover:text-red-700 transition flex items-center gap-1" onclick="deleteCocktail('${cocktail.id}')">
-                    <i class="ri-delete-bin-line"></i>
-                    <span>Supprimer</span>
-                </button>
+              <button class="text-indigo-600 hover:text-indigo-800 transition flex items-center gap-1" onclick="editCocktail('${cocktail.id}')"><i class="ri-edit-line"></i><span>Modifier</span></button>
+              <button class="text-red-500 hover:text-red-700 transition flex items-center gap-1" onclick="deleteCocktail('${cocktail.id}')"><i class="ri-delete-bin-line"></i><span>Supprimer</span></button>
             </div>
+          </div>
         </div>
-    </div>
-`;
-      // Ajout de l'élément à la liste
-      cocktailList.appendChild(cocktailElement)
-    })
+      `;
+      cocktailList.appendChild(cocktailElement);
+    });
   } catch (error) {
-    console.error("Erreur lors du chargement des cocktails:", error)
-    showNotification("Erreur lors du chargement des cocktails.", "error")
+    console.error("Erreur lors du chargement des cocktails:", error);
+    showNotification("Erreur lors du chargement des cocktails.", "error");
   }
 }
 
-// Fonction pour obtenir les cocktails par défaut
-function getDefaultCocktails() {
-  return [
-    {
-      id: "c1",
-      name: "Mojito",
-      description: "Un cocktail rafraîchissant à base de rhum, menthe et citron vert.",
-      ingredients: [
-        "45ml de rhum blanc",
-        "2 cuillères à café de sucre",
-        "1/2 citron vert",
-        "Quelques feuilles de menthe",
-        "Eau gazeuse",
-      ],
-      instructions:
-        "Piler la menthe avec le sucre et le jus de citron vert. Ajouter le rhum et compléter avec de l'eau gazeuse.",
-    },
-    {
-      id: "c2",
-      name: "Margarita",
-      description: "Un classique mexicain avec tequila et citron vert.",
-      ingredients: ["50ml de tequila", "25ml de triple sec", "25ml de jus de citron vert", "Sel", "Glaçons"],
-      instructions:
-        "Frotter le bord d'un verre avec du citron vert et le tremper dans du sel. Mélanger la tequila, le triple sec et le jus de citron avec des glaçons. Filtrer dans le verre préparé.",
-    },
-    {
-      id: "c3",
-      name: "Piña Colada",
-      description: "Cocktail tropical créé à Puerto Rico.",
-      ingredients: ["50ml de rhum blanc", "30ml de lait de coco", "50ml de jus d'ananas", "Glaçons"],
-      instructions:
-        "Mélanger tous les ingrédients avec des glaçons dans un mixeur jusqu'à obtenir une consistance lisse. Verser dans un verre et décorer d'une tranche d'ananas.",
-    },
-  ]
-}
-
-// Fonction pour sauvegarder les cocktails dans l'API
-async function saveCocktailsToAPI(cocktails) {
-  if (USE_MOCK_API) {
-    try {
-      // Convertir le tableau en objet pour Firebase
-      const cocktailsObj = {}
-      cocktails.forEach((cocktail) => {
-        cocktailsObj[cocktail.id] = {
-          name: cocktail.name,
-          description: cocktail.description,
-          ingredients: cocktail.ingredients,
-          instructions: cocktail.instructions,
-        }
-      })
-
-      // Envoyer à Firebase
-      await fetch("https://cocktail-manager-demo-default-rtdb.firebaseio.com/cocktails.json", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(cocktailsObj),
-      })
-    } catch (error) {
-      console.error("Erreur lors de la sauvegarde des cocktails:", error)
-    }
-  } else {
-    // Appel à une vraie API
-    await fetch(`${API_BASE_URL}/cocktails`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(cocktails),
-    })
-  }
+// Fonction pour ajouter un cocktail dans la base de données
+async function addCocktailToAPI({ name, description, ingredients, instructions }) {
+  const response = await fetch(`${API_BASE_URL}/cocktails`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, description, ingredients, instructions })
+  });
+  if (!response.ok) throw new Error("Erreur lors de l'ajout du cocktail");
+  return await response.json();
 }
 
 // Fonction d'édition (à implémenter)
@@ -481,11 +369,11 @@ document.getElementById("searchInput").addEventListener("keypress", (e) => {
 })
 
 // Gestionnaire d'événement pour la soumission du formulaire
-document.getElementById("addCocktailForm").addEventListener("submit", async (e) => {
-  e.preventDefault() // Empêche le rechargement de la page
-
-  const name = document.getElementById("name").value
-  const description = document.getElementById("description").value
+const addCocktailForm = document.getElementById("addCocktailForm");
+addCocktailForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const name = document.getElementById("name").value;
+  const description = document.getElementById("description").value;
   const ingredientRows = document.querySelectorAll("#ingredientsContainer > div");
   const ingredients = Array.from(ingredientRows).map(row => {
     const select = row.querySelector("select");
@@ -493,55 +381,16 @@ document.getElementById("addCocktailForm").addEventListener("submit", async (e) 
     const unit = row.querySelector(".ingredient-unit");
     return select.value && qty.value ? `${qty.value}${unit.textContent} ${select.value}` : null;
   }).filter(Boolean);
-  const instructions = document.getElementById("instructions").value
+  const instructions = document.getElementById("instructions").value;
 
   try {
-    if (USE_MOCK_API) {
-      // Récupérer les cocktails actuels
-      const response = await fetch("https://cocktail-manager-demo-default-rtdb.firebaseio.com/cocktails.json")
-      let cocktails = {}
-
-      if (response.ok) {
-        cocktails = (await response.json()) || {}
-      }
-
-      // Générer un ID unique
-      const newId = "c" + Date.now()
-
-      // Ajouter le nouveau cocktail
-      cocktails[newId] = {
-        name,
-        description,
-        ingredients,
-        instructions,
-      }
-
-      // Mettre à jour la base de données
-      await fetch("https://cocktail-manager-demo-default-rtdb.firebaseio.com/cocktails.json", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(cocktails),
-      })
-    } else {
-      // Appel à une vraie API
-      await fetch(`${API_BASE_URL}/cocktails`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, description, ingredients, instructions }),
-      })
-    }
-
-    // Réinitialiser le formulaire
-    document.getElementById("addCocktailForm").reset()
-
-    // Notification de succès
-    showNotification("Cocktail ajouté avec succès !")
-
-    // Recharger la liste des cocktails
-    fetchCocktails(document.getElementById("searchInput").value)
+    await addCocktailToAPI({ name, description, ingredients, instructions });
+    addCocktailForm.reset();
+    showNotification("Cocktail ajouté avec succès !");
+    fetchCocktails(document.getElementById("searchInput").value);
   } catch (error) {
-    console.error("Erreur lors de l'ajout du cocktail:", error)
-    showNotification("Erreur lors de l'ajout du cocktail.", "error")
+    console.error("Erreur lors de l'ajout du cocktail:", error);
+    showNotification("Erreur lors de l'ajout du cocktail.", "error");
   }
 })
 
