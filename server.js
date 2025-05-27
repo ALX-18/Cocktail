@@ -39,10 +39,10 @@ if (!process.env.DATABASE_URL) {
 // 🔹 Configuration de la connexion PostgreSQL
 const pool = new Pool({
     connectionString: process.env.SUPABASE_DB_URL,
-  ssl: {
-    require: true,
-    rejectUnauthorized: false
-  }
+    ssl: {
+        require: true,
+        rejectUnauthorized: false
+    }
 });
 
 
@@ -72,9 +72,28 @@ const initDb = async () => {
                 id SERIAL PRIMARY KEY,
                 name VARCHAR(255) NOT NULL UNIQUE
             );
+
+            CREATE TABLE IF NOT EXISTS ratings (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                cocktail_id INTEGER NOT NULL,
+                rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (cocktail_id) REFERENCES cocktails(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS favorites (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                cocktail_id INTEGER NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (cocktail_id) REFERENCES cocktails(id) ON DELETE CASCADE
+            );
         `);
 
-        console.log("✅ Tables 'cocktails' et 'ingredients' vérifiées/créées.");
+        console.log("✅ Tables 'cocktails', 'ingredients', 'ratings' et 'favorites' vérifiées/créées.");
         client.release();
 
         // Insérer les ingrédients après la création des tables
@@ -230,6 +249,77 @@ app.post('/api/users/login', async (req, res) => {
     res.json({ id, email, username, urlavatar });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur.' });
+  }
+});
+
+
+// Get ratings for a user
+app.get('/api/ratings', async (req, res) => {
+  const { user_id } = req.query;
+  if (!user_id) return res.status(400).json({ error: 'user_id requis' });
+  try {
+    const result = await pool.query('SELECT * FROM ratings WHERE user_id = $1', [user_id]);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Add or update a rating
+app.post('/api/ratings', async (req, res) => {
+  const { user_id, cocktail_id, rating } = req.body;
+  if (!user_id || !cocktail_id || !rating) return res.status(400).json({ error: 'Champs requis manquants' });
+  try {
+    // Upsert
+    const result = await pool.query(
+      `INSERT INTO ratings (user_id, cocktail_id, rating) VALUES ($1, $2, $3)
+       ON CONFLICT (user_id, cocktail_id) DO UPDATE SET rating = $3 RETURNING *`,
+      [user_id, cocktail_id, rating]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Get favorites for a user
+app.get('/api/favorites', async (req, res) => {
+  const { user_id } = req.query;
+  if (!user_id) return res.status(400).json({ error: 'user_id requis' });
+  try {
+    const result = await pool.query('SELECT * FROM favorites WHERE user_id = $1', [user_id]);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Add a favorite
+app.post('/api/favorites', async (req, res) => {
+  const { user_id, cocktail_id } = req.body;
+  if (!user_id || !cocktail_id) return res.status(400).json({ error: 'Champs requis manquants' });
+  try {
+    const result = await pool.query(
+      `INSERT INTO favorites (user_id, cocktail_id) VALUES ($1, $2)
+       ON CONFLICT (user_id, cocktail_id) DO NOTHING RETURNING *`,
+      [user_id, cocktail_id]
+    );
+    res.json(result.rows[0] || {});
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Remove a favorite
+app.delete('/api/favorites', async (req, res) => {
+  // Récupère depuis req.query au lieu de req.body
+  const { user_id, cocktail_id } = req.query;
+  if (!user_id || !cocktail_id) return res.status(400).json({ error: 'Champs requis manquants' });
+  try {
+    await pool.query('DELETE FROM favorites WHERE user_id = $1 AND cocktail_id = $2', [user_id, cocktail_id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
