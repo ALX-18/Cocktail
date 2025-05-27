@@ -368,7 +368,17 @@ app.patch('/api/admin/users/:id/role', authenticateToken, isAdmin, async (req, r
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
-
+app.delete('/api/admin/users/:id', authenticateToken, isAdmin, async (req, res) => {
+    const { id } = req.params;
+    try {
+        // Supprime aussi ses cocktails, favoris, ratings via cascade FK
+        const result = await pool.query('DELETE FROM users WHERE id = $1 RETURNING id', [id]);
+        if (result.rowCount === 0) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
 // Supprimer un cocktail (admin)
 app.delete('/api/admin/cocktails/:id', authenticateToken, isAdmin, async (req, res) => {
     const { id } = req.params;

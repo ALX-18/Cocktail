@@ -22,16 +22,22 @@ async function loadUsers() {
         container.innerHTML = users.map(u => `
       <div class="flex justify-between items-center p-3 border rounded">
         <div>${u.username} (${u.email}) - <strong>Rôle:</strong> ${u.role}</div>
-        <select class="border rounded p-1" onchange="changeUserRole(${u.id}, this.value)">
-          <option value="user" ${u.role === 'user' ? 'selected' : ''}>User</option>
-          <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Admin</option>
-        </select>
+        <div class="flex items-center gap-2">
+          <select class="border rounded p-1" onchange="changeUserRole(${u.id}, this.value)">
+            <option value="user" ${u.role === 'user' ? 'selected' : ''}>User</option>
+            <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Admin</option>
+          </select>
+          <button class="py-1 px-3 bg-red-600 text-white rounded hover:bg-red-700" onclick="deleteUser(${u.id})">
+            Supprimer
+          </button>
+        </div>
       </div>
     `).join('');
     } catch (error) {
         alert(error.message);
     }
 }
+
 
 async function changeUserRole(userId, newRole) {
     if (!confirm(`Changer le rôle de l'utilisateur ${userId} en ${newRole} ?`)) return;
@@ -82,6 +88,22 @@ async function deleteCocktail(cocktailId) {
         alert(error.message);
     }
 }
+async function deleteUser(userId) {
+    if (!confirm('Confirmer la suppression de cet utilisateur ?')) return;
+    try {
+        const res = await fetch(`/api/admin/users/${userId}`, {
+            method: 'DELETE',
+            headers: authHeaders
+        });
+        if (!res.ok) throw new Error('Erreur lors de la suppression de l\'utilisateur');
+        alert('Utilisateur supprimé avec succès');
+        await loadUsers();
+    } catch (error) {
+        alert(error.message);
+    }
+}
+
+window.deleteUser = deleteUser; // Rendre la fonction globale
 
 // Rendre les fonctions globales pour que les onclick inline les trouve
 window.changeUserRole = changeUserRole;
