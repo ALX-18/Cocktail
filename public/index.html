@@ -193,13 +193,13 @@
     // Gestion du bouton connexion/profil
     (function() {
       const btn = document.getElementById('mainProfileBtn');
-      const user = localStorage.getItem('currentUser');
+      const user = sessionStorage.getItem('currentUser');
       if (user) {
         btn.textContent = 'Profil';
-        btn.onclick = () => window.location.href = '/profil.html';
+        btn.onclick = () => window.location.href = '/profil';
       } else {
         btn.textContent = 'Se connecter';
-        btn.onclick = () => window.location.href = '/login/login.html';
+        btn.onclick = () => window.location.href = '/login';
       }
     })();
     </script>

@@ -1,4 +1,3 @@
-// Gestion de la connexion utilisateur avec vérification depuis localStorage
 const loginForm = document.getElementById('loginForm');
 const loginMessage = document.getElementById('loginMessage');
 const loginBox = document.querySelector('.login-box');
@@ -54,14 +53,41 @@ loginForm.addEventListener('submit', async function(e) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ mailOrUsername, password })
     });
+
+    if (response.status === 429) {
+      // Afficher un message d’erreur au lieu de document.write
+      loginMessage.innerHTML = `
+        <h1 style="color:#dc2626; text-align:center; margin-top:20vh;">
+          Trop de tentatives de connexion<br>
+          Veuillez réessayer plus tard.
+        </h1>
+      `;
+      return;
+    }
+
     if (!response.ok) throw new Error("Identifiants invalides.");
-    const user = await response.json();
-    localStorage.setItem('currentUser', JSON.stringify(user));
-    showMessage('Connexion réussie ! Redirection...', 'success');
+
+    const data = await response.json();
+    console.log("Réponse login backend :", data);
+
+    const { token, user } = data;
+
+    if (!token) throw new Error("Aucun token reçu.");
+
+    // Stocker le token JWT dans sessionStorage
+    sessionStorage.setItem('authToken', token);
+
+    // Stocker les infos utilisateur (sans mot de passe)
+    sessionStorage.setItem('currentUser', JSON.stringify(user));
+
+     showMessage('Connexion réussie ! Redirection...', 'success');
     hideLoader();
+
+
     setTimeout(() => {
       window.location.href = '/';
     }, 1200);
+
   } catch (err) {
     showMessage(err.message || "Erreur de connexion.", 'error');
     hideLoader();

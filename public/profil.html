@@ -50,7 +50,8 @@
   <footer class="w-full text-center text-xs text-gray-400 z-10 py-2">© 2025 Cocktail Manager</footer>
   <script>
     // Charger les infos du user connecté
-    const user = JSON.parse(localStorage.getItem('currentUser'));
+    const user = JSON.parse(sessionStorage.getItem('currentUser'));
+    console.log("Utilisateur chargé :", user);
     if (!user) {
       window.location.href = '/login/login.html';
     } else {
@@ -63,7 +64,7 @@
       }
     }
     document.getElementById('logoutBtn').onclick = function() {
-      localStorage.removeItem('currentUser');
+      sessionStorage.removeItem('currentUser');
       window.location.href = '/login/login.html';
     };
     document.getElementById('editProfileBtn').onclick = function() {
@@ -116,6 +117,29 @@
       }
     }
     loadProfileData();
+if (!user) {
+      window.location.href = '/login/login.html';
+    } else {
+      document.getElementById('profileUsername').textContent = user.username;
+      document.getElementById('profileEmail').textContent = user.email;
+      if (user.urlavatar) {
+        document.getElementById('profileAvatar').src = user.urlavatar;
+      } else {
+        document.getElementById('profileAvatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.username)}&background=6d28d9&color=fff&size=128`;
+      }
+    }
+
+    // Ajouter un bouton modération si admin
+    if (user.role === 'admin') {
+      const adminBtn = document.createElement('button');
+      adminBtn.textContent = "Modération";
+      adminBtn.className = "w-full py-3 bg-gradient-to-r from-red-500 to-red-700 text-white rounded-lg mt-4";
+      adminBtn.onclick = () => {
+        window.location.href = '/moderation'; // ou ta page modération
+      };
+      document.querySelector('.container')?.appendChild(adminBtn);
+    }
+
   </script>
 </body>
 </html>

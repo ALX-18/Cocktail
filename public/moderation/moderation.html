@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Modération - Cocktail Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet" />
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+
+<header class="bg-red-600 text-white p-6 text-center font-bold text-2xl shadow">
+    Panel de Modération
+</header>
+
+<main class="flex-grow max-w-5xl mx-auto p-6 space-y-10">
+
+    <section>
+        <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
+            <i class="ri-user-3-line"></i> Utilisateurs
+        </h2>
+        <div id="usersList" class="space-y-4"></div>
+    </section>
+
+    <section>
+        <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
+            <i class="ri-cup-line"></i> Cocktails
+        </h2>
+        <div id="cocktailsList" class="space-y-4"></div>
+    </section>
+
+    <button id="backBtn" class="mt-10 py-3 px-6 bg-gray-300 rounded hover:bg-gray-400 w-full max-w-xs mx-auto">
+        Retour Profil
+    </button>
+</main>
+
+<script src="moderation.js"></script>
+</body>
+</html>
