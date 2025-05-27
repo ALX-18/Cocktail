@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mon Profil - Cocktail Manager</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen flex flex-col">
+  <header class="relative bg-gradient-to-r from-purple-900 to-indigo-800 text-white py-12 shadow-xl">
+    <div class="container mx-auto px-4 flex justify-between items-center">
+      <h1 class="text-3xl font-bold font-display tracking-tight">Mon Profil</h1>
+      <button onclick="window.location.href='/'" class="px-5 py-2 bg-white/80 text-indigo-700 rounded-lg shadow hover:bg-white font-semibold transition">Accueil</button>
+    </div>
+  </header>
+  <main class="flex-grow flex items-center justify-center p-6">
+    <div class="bg-white bg-opacity-90 rounded-xl shadow-lg p-8 w-full max-w-lg flex flex-col items-center gap-6 glass">
+      <div class="w-32 h-32 rounded-full bg-gradient-to-br from-indigo-400 to-pink-400 flex items-center justify-center overflow-hidden shadow-lg mb-2">
+        <img id="profileAvatar" src="https://ui-avatars.com/api/?name=User&background=6d28d9&color=fff&size=128" alt="Avatar" class="w-full h-full object-cover">
+      </div>
+      <h2 id="profileUsername" class="text-2xl font-bold text-indigo-700 mb-1">Nom d'utilisateur</h2>
+      <p id="profileEmail" class="text-gray-700 mb-4">Email</p>
+      <div class="flex flex-col gap-2 w-full">
+        <button id="logoutBtn" class="w-full py-3 bg-gradient-to-r from-pink-500 to-orange-500 text-white rounded-lg hover:from-pink-600 hover:to-orange-600 transition font-medium cursor-pointer">Se déconnecter</button>
+      </div>
+      <div class="w-full mt-8">
+        <h3 class="text-lg font-semibold text-indigo-700 mb-2 flex items-center gap-2"><i class="ri-star-smile-line"></i> Mes notes</h3>
+        <div id="userRatings" class="space-y-2"></div>
+      </div>
+      <div class="w-full mt-8">
+        <h3 class="text-lg font-semibold text-indigo-700 mb-2 flex items-center gap-2"><i class="ri-heart-3-line"></i> Mes favoris</h3>
+        <div id="userFavorites" class="space-y-2"></div>
+      </div>
+      <div class="w-full mt-8">
+        <h3 class="text-lg font-semibold text-indigo-700 mb-2 flex items-center gap-2"><i class="ri-cup-line"></i> Mes cocktails créés</h3>
+        <div id="userCocktails" class="space-y-2"></div>
+      </div>
+    </div>
+  </main>
+  <script>
+    // Charger les infos du user connecté
+    const user = JSON.parse(localStorage.getItem('currentUser'));
+    if (!user) {
+      window.location.href = '/login/login.html';
+    } else {
+      document.getElementById('profileUsername').textContent = user.username;
+      document.getElementById('profileEmail').textContent = user.email;
+      if (user.urlavatar) {
+        document.getElementById('profileAvatar').src = user.urlavatar;
+      } else {
+        document.getElementById('profileAvatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.username)}&background=6d28d9&color=fff&size=128`;
+      }
+    }
+    document.getElementById('logoutBtn').onclick = function() {
+      localStorage.removeItem('currentUser');
+      window.location.href = '/login/login.html';
+    };
+
+    // Affichage des cocktails créés, favoris et notes
+    async function loadProfileData() {
+      if (!user) return;
+      // Récupérer tous les cocktails
+      const cocktailsRes = await fetch('/api/cocktails');
+      const cocktails = await cocktailsRes.json();
+      // Récupérer les ratings du user
+      const ratingsRes = await fetch(`/api/ratings?user_id=${user.id}`);
+      const ratings = await ratingsRes.json();
+      // Récupérer les favoris du user
+      const favsRes = await fetch(`/api/favorites?user_id=${user.id}`);
+      const favorites = await favsRes.json();
+
+      // Cocktails créés (si tu ajoutes un champ user_id dans la table cocktails)
+      const myCocktails = cocktails.filter(c => c.user_id === user.id);
+      document.getElementById('userCocktails').innerHTML = myCocktails.length ? myCocktails.map(c => `<div class="p-3 bg-gray-100 rounded flex items-center gap-2"><i class='ri-cup-line text-indigo-500'></i> <span>${c.name}</span></div>`).join('') : '<p class="text-gray-400">Aucun cocktail créé.</p>';
+
+      // Favoris
+      if (favorites.length) {
+        document.getElementById('userFavorites').innerHTML = favorites.map(fid => {
+          const c = cocktails.find(c => c.id === fid.cocktail_id);
+          return c ? `<div class="p-3 bg-pink-50 rounded flex items-center gap-2"><i class='ri-heart-fill text-pink-500'></i> <span>${c.name}</span></div>` : '';
+        }).join('');
+      } else {
+        document.getElementById('userFavorites').innerHTML = '<p class="text-gray-400">Aucun favori.</p>';
+      }
+
+      // Ratings
+      if (ratings.length) {
+        document.getElementById('userRatings').innerHTML = ratings.map(r => {
+          const c = cocktails.find(c => c.id === r.cocktail_id);
+          return c ? `<div class="p-3 bg-yellow-50 rounded flex items-center gap-2"><i class='ri-star-fill text-yellow-400'></i> <span>${c.name}</span> <span class='ml-2'>${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</span></div>` : '';
+        }).join('');
+      } else {
+        document.getElementById('userRatings').innerHTML = '<p class="text-gray-400">Aucune note donnée.</p>';
+      }
+    }
+    loadProfileData();
+  </script>
+</body>
+</html>
