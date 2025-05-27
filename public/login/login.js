@@ -18,16 +18,16 @@ loginForm.addEventListener('submit', async function(e) {
     });
 
     if (response.status === 429) {
-      // Afficher un message d’erreur au lieu de document.write
-      loginMessage.innerHTML = `
-        <h1 style="color:#dc2626; text-align:center; margin-top:20vh;">
-          Trop de tentatives de connexion<br>
-          Veuillez réessayer plus tard.
-        </h1>
-      `;
+      document.open();
+      document.write(`
+    <h1 style="color:#dc2626; text-align:center; margin-top:20vh;">
+      Trop de tentatives de connexion<br>
+      Veuillez réessayer plus tard.
+    </h1>
+  `);
+      document.close();
       return;
     }
-
     if (!response.ok) throw new Error("Identifiants invalides.");
 
     const data = await response.json();
