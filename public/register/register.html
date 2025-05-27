@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css">
 </head>
 <body>
+<<<<<<< HEAD
 <div class="login-box">
   <button class="back-btn" type="button" onclick="window.location.href='/'" title="Retour">
     <i class="ri-arrow-left-line"></i>
@@ -26,5 +27,24 @@
   <div id="registerMessage"></div>
 </div>
 <script src="/register/register.js"></script>
+=======
+  <div class="login-box">
+    <button class="back-btn" type="button" onclick="window.location.href='/'" title="Retour">
+      <i class="ri-arrow-left-line"></i>
+    </button>
+    <h2>Créer un compte</h2>
+    <form id="registerForm" autocomplete="on">
+      <input type="text" id="mail" name="mail" placeholder="Email" required autofocus autocomplete="email">
+      <input type="text" id="username" name="username" placeholder="Nom d'utilisateur" required autocomplete="username">
+      <input type="password" id="password" name="password" placeholder="Mot de passe" required autocomplete="new-password">
+      <input type="submit" value="Créer son compte">
+    </form>
+    <button type="button" class="register-btn" onclick="window.location.href='/login'">
+      <i class="ri-login-circle-line"></i> Se connecter
+    </button>
+    <div id="registerMessage"></div>
+  </div>
+  <script src="/register/register.js"></script>
+>>>>>>> 153a8d5928b0346177bafebc1a76e13ad1b52af1
 </body>
 </html>
