@@ -17,6 +17,11 @@ app.use('/register', express.static(path.join(__dirname, 'public', 'register')))
 // Servir le dossier 'login' sous l'URL '/login'
 app.use('/login', express.static(path.join(__dirname, 'public', 'login')));
 
+// Servir le dossier 'user' sous l'URL '/user'
+app.use('/user', express.static(path.join(__dirname, 'public', 'user')));
+
+
+
 // (Optionnel) Route pour accéder explicitement à la page principale de register (ex: register.html)
 app.get('/register', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'register', 'register.html'));
@@ -29,6 +34,45 @@ app.get('/login', (req, res) => {
 
 
 
+// Route explicite pour accéder à user.html
+app.get('/user', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'user', 'user.html'));
+});
+app.use('/user', express.static(path.join(__dirname, 'public', 'user')));
+
+
+const cookieParser = require('cookie-parser');
+app.use(cookieParser());
+
+app.get('/api/user/profile', async (req, res) => {
+    const userId = req.cookies.userId;
+
+    if (!userId) {
+        return res.status(401).json({ error: "Non autorisé. Aucun ID utilisateur trouvé." });
+    }
+
+    try {
+        const result = await pool.query(
+            'SELECT id, username, email FROM users WHERE id = $1',
+            [userId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: "Utilisateur non trouvé." });
+        }
+
+        res.json(result.rows[0]);
+    } catch (error) {
+        console.error("❌ Erreur GET /api/user/profile :", error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+
+
+
+
+
 // Vérifier si DATABASE_URL est bien défini
 if (!process.env.DATABASE_URL) {
     console.error("❌ Erreur : DATABASE_URL n'est pas défini dans .env !");
@@ -37,7 +81,7 @@ if (!process.env.DATABASE_URL) {
 
 // 🔹 Configuration de la connexion PostgreSQL
 const pool = new Pool({
-    connectionString: process.env.SUPABASE_DB_URL,
+    connectionString: process.env.DATABASE_URL,
   ssl: {
     require: true,
     rejectUnauthorized: false

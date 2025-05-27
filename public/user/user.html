@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/style.css">
+  <title>Profil Utilisateur</title>
+</head>
+<body class="dark">
+  <div class="container glass">
+    <header style="display:flex;justify-content:space-between;align-items:center;">
+      <h1>Profil de <span id="username">NomUtilisateur</span></h1>
+      <button class="logout-btn pulse-animation">Se déconnecter</button>
+    </header>
+    <div class="user-info">
+      <p><strong>Email :</strong> <span id="email">user@example.com</span></p>
+    </div>
+    <div class="sections">
+      <section>
+        <h2>Mes Cocktails Créés</h2>
+        <ul id="created-cocktails">
+          <!-- Cocktails créés dynamiquement -->
+        </ul>
+      </section>
+      <section>
+        <h2>Mes Likes</h2>
+        <ul id="liked-cocktails">
+          <!-- Cocktails likés dynamiquement -->
+        </ul>
+      </section>
+      <section>
+        <h2>Mes Notes</h2>
+        <ul id="rated-cocktails">
+          <!-- Cocktails notés dynamiquement -->
+        </ul>
+      </section>
+    </div>
+  </div>
+  <script src="user.js"></script>
+</body>
+</html>
