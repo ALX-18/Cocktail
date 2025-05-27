@@ -19,7 +19,6 @@ if (!process.env.DATABASE_URL) {
 const pool = new Pool({
     connectionString: process.env.SUPABASE_DB_URL,
     ssl: {
-        require: true,
         rejectUnauthorized: false
     }
 });
