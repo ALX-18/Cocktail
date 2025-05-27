@@ -3,6 +3,7 @@ const { Pool } = require('pg');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const bcrypt = require('bcrypt');
 require('dotenv').config();
 
 const app = express();
@@ -224,6 +225,45 @@ app.get('/api/ingredients', async (req, res) => {
     }
 });
 
+// Register
+app.post('/api/users/register', async (req, res) => {
+  const { email, username, password, urlavatar } = req.body;
+  if (!email || !username || !password) return res.status(400).json({ error: 'Champs requis manquants.' });
+  try {
+    const userExists = await pool.query('SELECT 1 FROM users WHERE email = $1 OR username = $2', [email, username]);
+    if (userExists.rowCount > 0) return res.status(409).json({ error: "Email ou nom d'utilisateur déjà utilisé." });
+    const hash = await bcrypt.hash(password, 10);
+    const result = await pool.query(
+      'INSERT INTO users (email, username, password, urlavatar) VALUES ($1, $2, $3, $4) RETURNING id, email, username, urlavatar',
+      [email, username, hash, urlavatar || null]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur.' });
+  }
+});
+
+// Login
+app.post('/api/users/login', async (req, res) => {
+  const { mailOrUsername, password } = req.body;
+  if (!mailOrUsername || !password) return res.status(400).json({ error: 'Champs requis manquants.' });
+  try {
+    const userRes = await pool.query(
+      'SELECT * FROM users WHERE email = $1 OR username = $1',
+      [mailOrUsername]
+    );
+    if (userRes.rowCount === 0) return res.status(401).json({ error: 'Identifiants invalides.' });
+    const user = userRes.rows[0];
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) return res.status(401).json({ error: 'Identifiants invalides.' });
+    // Ne pas renvoyer le hash !
+    const { id, email, username, urlavatar } = user;
+    res.json({ id, email, username, urlavatar });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur.' });
+  }
+});
+
 // 🔹 Lancer le serveur avec gestion du port dynamique
 const PORT = process.env.PORT || 3000;
 const server = app.listen(PORT, () => {
@@ -239,5 +279,4 @@ const server = app.listen(PORT, () => {
         console.error("❌ Erreur lors du démarrage du serveur :", err);
     }
 });
-// Servir tous les fichiers statiques du dossier public (déjà existant)
 
