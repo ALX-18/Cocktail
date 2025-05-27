@@ -326,10 +326,6 @@ async function fetchCocktails(search = "") {
               <button class="favorite-btn text-pink-500 hover:text-pink-700 text-xl transition" data-id="${cocktail.id}"><i class="ri-heart-line"></i></button>
               <button class="share-btn text-indigo-500 hover:text-indigo-700 text-xl transition" data-id="${cocktail.id}" title="Partager"><i class="ri-share-line"></i></button>
             </div>
-            <div class="flex gap-2 mt-2 md:mt-0">
-              <button class="text-indigo-600 hover:text-indigo-800 transition flex items-center gap-1" onclick="editCocktail('${cocktail.id}')"><i class="ri-edit-line"></i><span>Modifier</span></button>
-              <button class="text-red-500 hover:text-red-700 transition flex items-center gap-1" onclick="deleteCocktail('${cocktail.id}')"><i class="ri-delete-bin-line"></i><span>Supprimer</span></button>
-            </div>
           </div>
         </div>
       `;
@@ -452,11 +448,7 @@ function showNotification(message, type = "success") {
 
   // Afficher la notification
   notification.style.transform = "translateX(0)"
-
-  // Cacher la notification après 3 secondes
-  setTimeout(() => {
-    notification.style.transform = "translateX(100%)"
-  }, 3000)
+  notification.style.pointerEvents = "auto";
 }
 
 // Après le forEach, ajouter la gestion des interactions : notation, favoris, partage
@@ -464,8 +456,9 @@ function setupFavoritesAndRatingsAfterCocktails() {
   document.querySelectorAll('.share-btn').forEach(btn => {
     btn.addEventListener('click', function() {
       const url = window.location.href.split('#')[0] + '#cocktail-' + btn.dataset.id;
-      navigator.clipboard.writeText(url);
-      showNotification('Lien du cocktail copié !');
+      navigator.clipboard.writeText(url).then(() => {
+        showNotification('Lien du cocktail copié !');
+      });
     });
   });
   if (typeof window.initFavoritesAndRatings === "function") {
