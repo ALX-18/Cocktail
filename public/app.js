@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://localhost3000/api";
+const API_BASE_URL = "http://localhost:3000/api";
 const USE_MOCK_API = false;
 
 // Liste des ingrédients (à charger depuis le fichier ou à définir ici)
@@ -449,6 +449,16 @@ function showNotification(message, type = "success") {
   // Afficher la notification
   notification.style.transform = "translateX(0)"
   notification.style.pointerEvents = "auto";
+
+  // Supprimer tout timer précédent
+  if (window._notificationTimeout) {
+    clearTimeout(window._notificationTimeout);
+  }
+  // Cacher la notification après 5 secondes
+  window._notificationTimeout = setTimeout(() => {
+    notification.style.transform = "translateX(100%)"
+    notification.style.pointerEvents = "none";
+  }, 5000)
 }
 
 // Après le forEach, ajouter la gestion des interactions : notation, favoris, partage
@@ -458,6 +468,13 @@ function setupFavoritesAndRatingsAfterCocktails() {
       const url = window.location.href.split('#')[0] + '#cocktail-' + btn.dataset.id;
       navigator.clipboard.writeText(url).then(() => {
         showNotification('Lien du cocktail copié !');
+        // Forcer la disparition même si la notif est déjà affichée
+        if (window._notificationTimeout) clearTimeout(window._notificationTimeout);
+        window._notificationTimeout = setTimeout(() => {
+          const notification = document.getElementById('notification');
+          notification.style.transform = "translateX(100%)";
+          notification.style.pointerEvents = "none";
+        }, 5000);
       });
     });
   });
