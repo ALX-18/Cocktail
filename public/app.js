@@ -216,10 +216,21 @@ function formatIngredients(ingredients) {
 async function fetchCocktails(search = "") {
   try {
     let cocktails = [];
-    // Appel à la vraie API
-    const response = await fetch(`${API_BASE_URL}/cocktails${search ? `?search=${encodeURIComponent(search)}` : ""}`);
+    let url = `${API_BASE_URL}/cocktails`;
+    const response = await fetch(url);
     if (!response.ok) throw new Error("Erreur lors de la récupération des cocktails");
     cocktails = await response.json();
+
+    // Recherche dynamique sur nom, description et ingrédients (filtrage côté client)
+    if (search && search.trim() !== "") {
+      const searchLower = search.toLowerCase();
+      cocktails = cocktails.filter(
+        (cocktail) =>
+          (cocktail.name && cocktail.name.toLowerCase().includes(searchLower)) ||
+          (cocktail.description && cocktail.description.toLowerCase().includes(searchLower)) ||
+          (Array.isArray(cocktail.ingredients) && cocktail.ingredients.some((ing) => ing.toLowerCase().includes(searchLower)))
+      );
+    }
 
     // Trier les cocktails
     cocktails.sort((a, b) => {
@@ -419,34 +430,7 @@ function showNotification(message, type = "success") {
 }
 
 // Après le forEach, ajouter la gestion des interactions : notation, favoris, partage
-setTimeout(() => { // S'assurer que le DOM est prêt
-  document.querySelectorAll('.rating').forEach(ratingEl => {
-    ratingEl.addEventListener('click', function(e) {
-      if (e.target.dataset.rate) {
-        const rate = parseInt(e.target.dataset.rate);
-        const stars = this.querySelectorAll('i');
-        stars.forEach((star, idx) => {
-          if (idx < rate) {
-            star.classList.remove('ri-star-line');
-            star.classList.add('ri-star-fill');
-          } else {
-            star.classList.remove('ri-star-fill');
-            star.classList.add('ri-star-line');
-          }
-        });
-        // Ici tu peux sauvegarder la note côté client ou API
-      }
-    });
-  });
-  document.querySelectorAll('.favorite-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
-      this.classList.toggle('pulse-animation');
-      const icon = this.querySelector('i');
-      icon.classList.toggle('ri-heart-line');
-      icon.classList.toggle('ri-heart-fill');
-      // Ici tu peux sauvegarder le favori côté client ou API
-    });
-  });
+setTimeout(() => {
   document.querySelectorAll('.share-btn').forEach(btn => {
     btn.addEventListener('click', function() {
       const url = window.location.href.split('#')[0] + '#cocktail-' + btn.dataset.id;
@@ -454,5 +438,7 @@ setTimeout(() => { // S'assurer que le DOM est prêt
       showNotification('Lien du cocktail copié !');
     });
   });
+  // Initialiser favoris et ratings dynamiques via API
+  if (window.initFavoritesAndRatings) window.initFavoritesAndRatings();
 }, 0);
 
