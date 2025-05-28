@@ -445,34 +445,41 @@ addCocktailForm.addEventListener("submit", async (e) => {
 })
 
 // Fonction pour afficher les notifications
-function showNotification(message, type = "success") {
-  const notification = document.getElementById("notification")
+  function showNotification(message, type = "success") {
+    const notification = document.getElementById("notification")
 
-  // Définir le style selon le type
-  if (type === "success") {
-    notification.className =
-      "fixed top-4 right-4 bg-green-500 text-white p-4 rounded-lg shadow-lg flex items-center gap-2 z-50 slide-in"
-    notification.innerHTML = `<i class="ri-check-line text-xl"></i><span>${message}</span>`
-  } else {
-    notification.className =
-      "fixed top-4 right-4 bg-red-500 text-white p-4 rounded-lg shadow-lg flex items-center gap-2 z-50 slide-in"
-    notification.innerHTML = `<i class="ri-error-warning-line text-xl"></i><span>${message}</span>`
+    // Définir le style selon le type
+    if (type === "success") {
+      notification.className =
+        "fixed top-4 right-4 bg-green-500 text-white p-4 rounded-lg shadow-lg flex items-center gap-2 z-50 slide-in"
+      notification.innerHTML = `<i class="ri-check-line text-xl"></i><span>${message}</span>`
+    } else {
+      notification.className =
+        "fixed top-4 right-4 bg-red-500 text-white p-4 rounded-lg shadow-lg flex items-center gap-2 z-50 slide-in"
+      notification.innerHTML = `<i class="ri-error-warning-line text-xl"></i><span>${message}</span>`
+    }
+
+    // Afficher la notification
+    notification.style.transform = "translateX(0)"
+    notification.style.pointerEvents = "auto";
+
+    // Supprimer tout timer précédent
+    if (window._notificationTimeout) {
+      clearTimeout(window._notificationTimeout);
+    }
+
+    // Cacher et retirer la notification après 5 secondes
+    window._notificationTimeout = setTimeout(() => {
+      notification.style.transform = "translateX(100%)";
+      notification.style.opacity = "0";
+      notification.style.pointerEvents = "none";
+
+      // Supprimer du DOM après l'animation (500ms ici)
+      setTimeout(() => {
+        notification.remove();
+      }, 500);
+    }, 5000);
   }
-
-  // Afficher la notification
-  notification.style.transform = "translateX(0)"
-  notification.style.pointerEvents = "auto";
-
-  // Supprimer tout timer précédent
-  if (window._notificationTimeout) {
-    clearTimeout(window._notificationTimeout);
-  }
-  // Cacher la notification après 5 secondes
-  window._notificationTimeout = setTimeout(() => {
-    notification.style.transform = "translateX(100%)"
-    notification.style.pointerEvents = "none";
-  }, 5000)
-}
 
 // Après le forEach, ajouter la gestion des interactions : notation, favoris, partage
 function setupFavoritesAndRatingsAfterCocktails() {

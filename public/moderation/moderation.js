@@ -1,5 +1,5 @@
 // moderation.js
-
+const user = JSON.parse(sessionStorage.getItem('currentUser'));
 // Récupérer le token JWT stocké en sessionStorage
 const token = sessionStorage.getItem('authToken');
 if (!token) {
@@ -12,7 +12,10 @@ const authHeaders = {
     'Authorization': `Bearer ${token}`,
     'Content-Type': 'application/json'
 };
-
+if (!token || !user || user.role !== 'admin') {
+    alert("Accès interdit : vous devez être administrateur.");
+    window.location.href = '/login';
+}
 async function loadUsers() {
     try {
         const res = await fetch('/api/admin/users', { headers: authHeaders });

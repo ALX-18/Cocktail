@@ -116,6 +116,15 @@ const loginLimiter = rateLimit({
     message: "Trop de tentatives de connexion, veuillez réessayer plus tard."
 });
 
+function requireAdmin(req, res, next) {
+    if (!req.user || req.user.role !== 'admin') {
+        return res.status(403).json({ error: "Accès réservé aux administrateurs." });
+    }
+    next();
+}
+
+
+
 // -- ROUTES API --
 
 // Récupérer tous cocktails, option recherche
@@ -345,7 +354,7 @@ function isAdmin(req, res, next) {
 }
 
 // Récupérer tous utilisateurs (admin)
-app.get('/api/admin/users', authenticateToken, isAdmin, async (req, res) => {
+app.get('/api/admin/users', authenticateToken,requireAdmin, isAdmin, async (req, res) => {
     try {
         const result = await pool.query('SELECT id, email, username, role FROM users ORDER BY username ASC');
         res.json(result.rows);
