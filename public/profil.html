@@ -143,13 +143,16 @@ if (!user) {
 
     // Ajouter un bouton modération si admin
     if (user.role === 'admin') {
+      const header = document.querySelector('header .container');
       const adminBtn = document.createElement('button');
-      adminBtn.textContent = "Modération";
-      adminBtn.className = "w-full py-3 bg-gradient-to-r from-red-500 to-red-700 text-white rounded-lg mt-4";
+      adminBtn.innerHTML = `<span class="flex items-center gap-2"><i class="ri-shield-star-line text-lg"></i>Modération</span>`;
+      adminBtn.className = "py-2 px-4 bg-gradient-to-r from-red-500 via-pink-500 to-orange-500 text-white rounded-lg shadow-lg hover:scale-105 hover:from-red-600 hover:to-orange-600 transition-all duration-200 font-bold text-base tracking-wide flex items-center justify-center gap-2 border-2 border-white/60 ml-4";
       adminBtn.onclick = () => {
-        window.location.href = '/moderation'; // ou ta page modération
+        window.location.href = '/moderation';
       };
-      document.querySelector('.container')?.appendChild(adminBtn);
+      // Ajoute le bouton juste après le bouton Accueil
+      const accueilBtn = header.querySelector('button');
+      accueilBtn.insertAdjacentElement('afterend', adminBtn);
     }
 
   </script>
